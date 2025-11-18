@@ -1,389 +1,514 @@
 (() => {
-    const doc = document.documentElement;
-    const body = document.body;
-    const themeToggle = document.querySelector('[data-theme-toggle]');
-    const storedTheme = localStorage.getItem('fomo-theme') || 'dark';
+    'use strict';
 
-    const applyTheme = (mode) => {
-        doc.setAttribute('data-theme', mode);
-        localStorage.setItem('fomo-theme', mode);
-        if (themeToggle) {
-            themeToggle.querySelector('.theme-toggle__icon').textContent = mode === 'dark' ? '🌙' : '☀️';
-        }
-    };
+    // Task Form Submission
+    const taskForm = document.querySelector('[data-task-form]');
+    const taskTitleInput = document.querySelector('[data-task-title-input]');
+    const taskDescriptionInput = document.querySelector('[data-task-description-input]');
 
-    applyTheme(storedTheme);
-
-    themeToggle?.addEventListener('click', () => {
-        const current = doc.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        applyTheme(current);
-    });
-
-    let activeModal = null;
-
-    const openModal = (modalId) => {
-        const modal = document.querySelector(`[data-modal="${modalId}"]`);
-        if (!modal) return;
-        if (activeModal && activeModal !== modal) {
-            closeActiveModal();
-        }
-        modal.classList.add('is-open');
-        modal.setAttribute('aria-hidden', 'false');
-        body.classList.add('modal-open');
-        activeModal = modal;
-    };
-
-    const closeActiveModal = () => {
-        if (!activeModal) return;
-        activeModal.classList.remove('is-open');
-        activeModal.setAttribute('aria-hidden', 'true');
-        activeModal = null;
-        body.classList.remove('modal-open');
-    };
-
-    document.querySelectorAll('[data-open-modal]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const targetId = btn.getAttribute('data-open-modal');
-            openModal(targetId);
-        });
-    });
-
-    document.querySelectorAll('[data-close-modal]').forEach((el) => {
-        el.addEventListener('click', closeActiveModal);
-    });
-
-    doc.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            closeActiveModal();
-            document.querySelectorAll('[data-dropdown]').forEach((dropdown) => dropdown.classList.remove('is-open'));
-        }
-    });
-
-    // Dropdown filters
-    const dropdowns = document.querySelectorAll('[data-dropdown]');
-
-    const closeAllDropdowns = () => {
-        dropdowns.forEach((dropdown) => dropdown.classList.remove('is-open'));
-    };
-
-    document.querySelectorAll('[data-toggle-dropdown]').forEach((btn) => {
-        btn.addEventListener('click', (event) => {
-            event.stopPropagation();
-            const container = btn.closest('[data-dropdown]');
-            if (!container) return;
-            const isOpen = container.classList.toggle('is-open');
-            dropdowns.forEach((dropdown) => {
-                if (dropdown !== container) {
-                    dropdown.classList.remove('is-open');
-                }
-            });
-            if (!isOpen) {
-                container.classList.remove('is-open');
+    if (taskForm && taskTitleInput) {
+        taskForm.addEventListener('submit', (e) => {
+            const title = taskTitleInput.value.trim();
+            if (!title) {
+                e.preventDefault();
+                return;
             }
-        });
-    });
 
-    document.addEventListener('click', (event) => {
-        if (!event.target.closest('[data-dropdown]')) {
-            closeAllDropdowns();
-        }
-    });
+            // Get description and set hidden field
+            const description = taskDescriptionInput ? taskDescriptionInput.value.trim() : '';
+            const hiddenDescriptionField = document.getElementById('id_task_description');
+            if (hiddenDescriptionField) {
+                hiddenDescriptionField.value = description;
+            }
 
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-
-    // Update task counts in UI from JSON data
-    const updateTaskCounts = (data) => {
-        if (!data) return;
-
-        // Update group chips in toolbar
-        if (data.groups) {
-            data.groups.forEach((group) => {
-                const chip = document.querySelector(`[data-group-chip="${group.id}"]`);
-                if (chip) {
-                    const small = chip.querySelector('small');
-                    if (small) {
-                        small.textContent = `${group.task_count} zadań`;
-                    }
-                }
-            });
-        }
-
-        // Update inbox count
-        if (data.inbox_count !== undefined) {
-            const inboxChip = document.querySelector('[data-group-chip="inbox"]');
-            if (inboxChip) {
-                const small = inboxChip.querySelector('small');
-                if (small) {
-                    small.textContent = `${data.inbox_count} zadań`;
+            // Get selected repeat frequency and set hidden field
+            const selectedRepeat = taskForm.querySelector('input[name="repeat_frequency"]:checked');
+            if (selectedRepeat) {
+                const hiddenRepeat = document.getElementById('id_task_repeat_frequency');
+                if (hiddenRepeat) {
+                    hiddenRepeat.value = selectedRepeat.value;
                 }
             }
-        }
-    };
 
-    // Enhanced drag and drop
-    const initDragAndDrop = () => {
-        const cards = document.querySelectorAll('.task-card');
-        const columns = document.querySelectorAll('.board-column');
-        let draggedCard = null;
-        let dragOverColumn = null;
-        let placeholder = null;
-
-        const createPlaceholder = () => {
-            const ph = document.createElement('div');
-            ph.className = 'task-card-placeholder';
-            ph.style.height = '80px';
-            ph.style.border = '2px dashed var(--accent)';
-            ph.style.borderRadius = 'var(--radius-lg)';
-            ph.style.background = 'rgba(92, 124, 250, 0.08)';
-            ph.style.margin = '8px 0';
-            return ph;
-        };
-
-        const setColumnHoverState = (column, isHovering) => {
-            if (!column) return;
-            column.classList.toggle('is-target', isHovering);
-            const columnBody = column.querySelector('[data-column-list]');
-            if (columnBody) {
-                columnBody.classList.toggle('is-over', isHovering);
+            // Get selected group and set hidden field
+            const hiddenGroupField = document.getElementById('id_task_group');
+            if (hiddenGroupField) {
+                // Value is already set by the group selector
             }
-        };
 
-        const resetColumnHoverStates = () => {
-            columns.forEach((column) => setColumnHoverState(column, false));
-            if (placeholder && placeholder.parentNode) {
-                placeholder.parentNode.removeChild(placeholder);
-            }
-            placeholder = null;
-            dragOverColumn = null;
-        };
-
-        const getDragAfterElement = (container, y) => {
-            const elements = [...container.querySelectorAll('.task-card:not(.is-dragging):not(.task-card-placeholder)')];
-            return elements.reduce(
-                (closest, child) => {
-                    const box = child.getBoundingClientRect();
-                    const offset = y - box.top - box.height / 2;
-                    if (offset < 0 && offset > closest.offset) {
-                        return { offset, element: child };
-                    }
-                    return closest;
-                },
-                { offset: Number.NEGATIVE_INFINITY, element: null },
-            ).element;
-        };
-
-        const moveTaskRequest = (taskId, groupId, position) => {
-            const formData = new FormData();
-            formData.append('group_id', groupId ?? '');
-            formData.append('position', position ?? 0);
-            formData.append('csrfmiddlewaretoken', csrfToken);
-
-            fetch(`/task/${taskId}/move/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrfToken,
-                    'Accept': 'application/json',
-                },
-                body: formData,
-            })
-                .then((response) => response.json())
-                .then((data) => {
-                    if (data.success) {
-                        updateTaskCounts(data);
-                    }
-                })
-                .catch((error) => {
-                    console.error('Nie udało się przenieść zadania', error);
-                    // Reload page on error
-                    window.location.reload();
-                });
-        };
-
-        cards.forEach((card) => {
-            card.addEventListener('dragstart', (e) => {
-                draggedCard = card;
-                card.classList.add('is-dragging');
-                // Store original group ID before moving
-                card.dataset.originalGroupId = card.dataset.groupId || '';
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/html', card.outerHTML);
-                // Create a ghost image
-                const dragImage = card.cloneNode(true);
-                dragImage.style.opacity = '0.5';
-                document.body.appendChild(dragImage);
-                dragImage.style.position = 'absolute';
-                dragImage.style.top = '-1000px';
-                e.dataTransfer.setDragImage(dragImage, 0, 0);
-                setTimeout(() => document.body.removeChild(dragImage), 0);
-            });
-
-            card.addEventListener('dragend', () => {
-                if (!draggedCard) return;
-                draggedCard.classList.remove('is-dragging');
-                resetColumnHoverStates();
-                draggedCard = null;
-            });
+            // Don't prevent default - let the form submit normally
+            // This ensures proper form submission with all fields
         });
 
-        columns.forEach((column) => {
-            const columnBody = column.querySelector('[data-column-list]');
-            if (!columnBody) return;
+        // Also submit on Enter key (but not in description)
+        taskTitleInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                // Trigger form submission
+                taskForm.requestSubmit();
+            }
+        });
+    }
 
-            columnBody.addEventListener('dragenter', (event) => {
-                event.preventDefault();
-                if (!draggedCard) return;
-                dragOverColumn = column;
-                setColumnHoverState(column, true);
-            });
+    // Group Selector Dropdown (in task input)
+    // This is independent from the sidebar group filter - it only affects new task creation
+    const groupSelectorBtn = document.querySelector('[data-toggle-group-dropdown]');
+    const groupSelectorDropdown = document.querySelector('[data-group-selector-dropdown]');
+    const selectedGroupName = document.querySelector('[data-selected-group-name]');
+    const hiddenGroupField = document.getElementById('id_task_group');
 
-            columnBody.addEventListener('dragover', (event) => {
-                event.preventDefault();
-                event.dataTransfer.dropEffect = 'move';
-                if (!draggedCard) return;
+    // Initialize group selector - always starts with "Brak" (no group)
+    // This is independent from the sidebar filter
+    if (hiddenGroupField) {
+        hiddenGroupField.value = '';
+    }
 
-                const afterElement = getDragAfterElement(columnBody, event.clientY);
+    if (groupSelectorBtn && groupSelectorDropdown) {
+        groupSelectorBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            groupSelectorDropdown.classList.toggle('open');
+        });
 
-                // Remove old placeholder
-                if (placeholder && placeholder.parentNode) {
-                    placeholder.parentNode.removeChild(placeholder);
-                }
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!groupSelectorDropdown.contains(e.target) && !groupSelectorBtn.contains(e.target)) {
+                groupSelectorDropdown.classList.remove('open');
+            }
+        });
 
-                // Insert placeholder
-                if (!placeholder) {
-                    placeholder = createPlaceholder();
-                }
+        // Handle group selection
+        const groupOptions = groupSelectorDropdown.querySelectorAll('.group-selector-option');
+        groupOptions.forEach((option) => {
+            option.addEventListener('click', () => {
+                const groupId = option.dataset.groupId || '';
+                const groupName = option.dataset.groupName;
 
-                if (afterElement == null) {
-                    columnBody.appendChild(placeholder);
+                // Update hidden field (always exists, just update value)
+                if (hiddenGroupField) {
+                    hiddenGroupField.value = groupId;
                 } else {
-                    columnBody.insertBefore(placeholder, afterElement);
-                }
-            });
-
-            columnBody.addEventListener('dragleave', (event) => {
-                if (!columnBody.contains(event.relatedTarget)) {
-                    setColumnHoverState(column, false);
-                    if (placeholder && placeholder.parentNode) {
-                        placeholder.parentNode.removeChild(placeholder);
-                    }
-                    placeholder = null;
-                    dragOverColumn = null;
-                }
-            });
-
-            columnBody.addEventListener('drop', (event) => {
-                event.preventDefault();
-                if (!draggedCard) return;
-
-                const taskId = draggedCard.dataset.taskId;
-                const groupId = column.dataset.groupId || '';
-                const siblings = [...columnBody.querySelectorAll('.task-card:not(.is-dragging):not(.task-card-placeholder)')];
-
-                // Remove placeholder
-                if (placeholder && placeholder.parentNode) {
-                    placeholder.parentNode.removeChild(placeholder);
-                }
-                placeholder = null;
-
-                // Insert card at correct position
-                const afterElement = getDragAfterElement(columnBody, event.clientY);
-                if (afterElement == null) {
-                    columnBody.appendChild(draggedCard);
-                } else {
-                    columnBody.insertBefore(draggedCard, afterElement);
+                    // Create hidden field if it doesn't exist
+                    const newField = document.createElement('input');
+                    newField.type = 'hidden';
+                    newField.name = 'task-group';
+                    newField.id = 'id_task_group';
+                    newField.value = groupId;
+                    taskForm.appendChild(newField);
                 }
 
-                const position = siblings.indexOf(draggedCard) + 1;
-                draggedCard.dataset.groupId = groupId;
-
-                setColumnHoverState(column, false);
-                dragOverColumn = null;
-
-                // Update counts immediately
-                const chip = column.querySelector('.column-actions .chip');
-                if (chip) {
-                    const newCount = columnBody.querySelectorAll('.task-card:not(.task-card-placeholder)').length;
-                    chip.textContent = newCount;
+                // Update displayed name
+                if (selectedGroupName) {
+                    selectedGroupName.textContent = groupName;
                 }
 
-                // Update source column count (use original group ID)
-                const originalGroupId = draggedCard.dataset.originalGroupId || '';
-                if (originalGroupId && originalGroupId !== groupId) {
-                    const sourceColumn = document.querySelector(`[data-group-id="${originalGroupId}"]`);
-                    if (sourceColumn && sourceColumn !== column) {
-                        const sourceBody = sourceColumn.querySelector('[data-column-list]');
-                        if (sourceBody) {
-                            const sourceChip = sourceColumn.querySelector('.column-actions .chip');
-                            if (sourceChip) {
-                                const sourceCount = sourceBody.querySelectorAll('.task-card:not(.task-card-placeholder)').length;
-                                sourceChip.textContent = sourceCount;
-                            }
-                        }
-                    }
-                } else if (!originalGroupId && groupId) {
-                    // Moving from inbox to a group
-                    const inboxColumn = document.querySelector('[data-group-id=""]');
-                    if (inboxColumn) {
-                        const inboxBody = inboxColumn.querySelector('[data-column-list]');
-                        if (inboxBody) {
-                            const inboxChip = inboxColumn.querySelector('.column-actions .chip');
-                            if (inboxChip) {
-                                const inboxCount = inboxBody.querySelectorAll('.task-card:not(.task-card-placeholder)').length;
-                                inboxChip.textContent = inboxCount;
-                            }
-                        }
-                    }
-                } else if (originalGroupId && !groupId) {
-                    // Moving from a group to inbox
-                    const sourceColumn = document.querySelector(`[data-group-id="${originalGroupId}"]`);
-                    if (sourceColumn) {
-                        const sourceBody = sourceColumn.querySelector('[data-column-list]');
-                        if (sourceBody) {
-                            const sourceChip = sourceColumn.querySelector('.column-actions .chip');
-                            if (sourceChip) {
-                                const sourceCount = sourceBody.querySelectorAll('.task-card:not(.task-card-placeholder)').length;
-                                sourceChip.textContent = sourceCount;
-                            }
-                        }
-                    }
-                }
-
-                // Send request to server
-                moveTaskRequest(taskId, groupId, position);
-            });
-        });
-    };
-
-    // Group filter form - auto-submit on change
-    const groupFilterForm = document.querySelector('.group-filter-form');
-    if (groupFilterForm) {
-        const checkboxes = groupFilterForm.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach((checkbox) => {
-            checkbox.addEventListener('change', () => {
-                // If "Wszystkie" is checked, uncheck others
-                if (checkbox.name === 'view_all' && checkbox.checked) {
-                    checkboxes.forEach((cb) => {
-                        if (cb !== checkbox) {
-                            cb.checked = false;
-                        }
-                    });
-                } else if (checkbox.name !== 'view_all') {
-                    // If any other is checked, uncheck "Wszystkie"
-                    const viewAll = groupFilterForm.querySelector('input[name="view_all"]');
-                    if (viewAll) {
-                        viewAll.checked = false;
-                    }
-                }
-                // Auto-submit after a short delay
-                clearTimeout(groupFilterForm._submitTimeout);
-                groupFilterForm._submitTimeout = setTimeout(() => {
-                    groupFilterForm.submit();
-                }, 300);
+                // Close dropdown
+                groupSelectorDropdown.classList.remove('open');
             });
         });
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
-        initDragAndDrop();
+    // Group Selection (sidebar)
+    const groupButtons = document.querySelectorAll('.sidebar-group-btn[data-group-id]');
+    groupButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const groupId = btn.dataset.groupId;
+            if (groupId) {
+                const currentUrl = new URL(window.location);
+                currentUrl.searchParams.set('group', groupId);
+                window.location.href = currentUrl.toString();
+            }
+        });
     });
+
+    // Group Menu (3-dot button) Dropdown
+    const groupMenuButtons = document.querySelectorAll('[data-toggle-group-menu]');
+    groupMenuButtons.forEach((btn) => {
+        const groupId = btn.dataset.toggleGroupMenu;
+        const menu = document.querySelector(`[data-group-menu="${groupId}"]`);
+        
+        if (menu) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Close all other menus
+                document.querySelectorAll('.group-menu-dropdown').forEach((m) => {
+                    if (m !== menu) {
+                        m.classList.remove('open');
+                    }
+                });
+                menu.classList.toggle('open');
+            });
+        }
+    });
+
+    // Close group menus when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.group-menu-btn') && !e.target.closest('.group-menu-dropdown')) {
+            document.querySelectorAll('.group-menu-dropdown').forEach((menu) => {
+                menu.classList.remove('open');
+            });
+        }
+    });
+
+    // Group Color Editing
+    const editGroupButtons = document.querySelectorAll('[data-edit-group]');
+    editGroupButtons.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const groupId = btn.dataset.editGroup;
+            // Create a color picker
+            const colorInput = document.createElement('input');
+            colorInput.type = 'color';
+            colorInput.value = '#0078d4'; // Default color
+            colorInput.style.position = 'absolute';
+            colorInput.style.opacity = '0';
+            colorInput.style.width = '1px';
+            colorInput.style.height = '1px';
+            
+            colorInput.addEventListener('change', (e) => {
+                const newColor = e.target.value;
+                // Submit color update via form
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/group/${groupId}/edit/`;
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                if (csrfToken) {
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrfmiddlewaretoken';
+                    csrfInput.value = csrfToken;
+                    form.appendChild(csrfInput);
+                }
+                const colorField = document.createElement('input');
+                colorField.type = 'hidden';
+                colorField.name = 'color';
+                colorField.value = newColor;
+                form.appendChild(colorField);
+                document.body.appendChild(form);
+                form.submit();
+            });
+            
+            document.body.appendChild(colorInput);
+            colorInput.click();
+            setTimeout(() => document.body.removeChild(colorInput), 100);
+        });
+    });
+
+    // Modal Handling
+    const modals = document.querySelectorAll('[data-modal]');
+    const openGroupFormBtn = document.querySelector('[data-open-group-form]');
+    const groupModal = document.querySelector('[data-modal="group-modal"]');
+    const closeModalButtons = document.querySelectorAll('[data-close-modal]');
+
+    if (openGroupFormBtn && groupModal) {
+        openGroupFormBtn.addEventListener('click', () => {
+            groupModal.setAttribute('aria-hidden', 'false');
+        });
+    }
+
+    // Close modal function
+    const closeModal = (modal) => {
+        if (modal) {
+            modal.setAttribute('aria-hidden', 'true');
+            // If it's the task edit modal, remove it from DOM
+            if (modal.dataset.modal === 'task-edit-modal') {
+                const container = document.getElementById('task-edit-modal-container');
+                if (container) {
+                    container.innerHTML = '';
+                }
+            }
+        }
+    };
+
+    closeModalButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const modal = btn.closest('[data-modal]') || document.querySelector('[data-modal]');
+            closeModal(modal);
+        });
+    });
+
+    // Close modal on backdrop click (using event delegation for dynamically added modals)
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal-backdrop')) {
+            const modal = e.target.closest('[data-modal]');
+            closeModal(modal);
+        }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            modals.forEach((modal) => {
+                closeModal(modal);
+            });
+            // Also close dropdowns
+            document.querySelectorAll('.group-selector-dropdown, .group-menu-dropdown').forEach((dropdown) => {
+                dropdown.classList.remove('open');
+            });
+        }
+    });
+
+    // Task Edit Modal
+    const editTaskButtons = document.querySelectorAll('[data-edit-task]');
+    const taskEditContainer = document.getElementById('task-edit-modal-container');
+    
+    editTaskButtons.forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const taskId = btn.dataset.editTask;
+            
+            // Load form via AJAX
+            try {
+                const response = await fetch(`/task/${taskId}/edit/`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                const html = await response.text();
+                
+                // Insert modal HTML
+                if (taskEditContainer) {
+                    taskEditContainer.innerHTML = html;
+                    
+                    // Show modal
+                    const modal = taskEditContainer.querySelector('[data-modal="task-edit-modal"]');
+                    if (modal) {
+                        modal.setAttribute('aria-hidden', 'false');
+                        
+                        // Handle form submission
+                        const form = modal.querySelector('form');
+                        if (form) {
+                            form.addEventListener('submit', async (e) => {
+                                e.preventDefault();
+                                const formData = new FormData(form);
+                                
+                                try {
+                                    const submitResponse = await fetch(form.action, {
+                                        method: 'POST',
+                                        body: formData,
+                                        headers: {
+                                            'X-Requested-With': 'XMLHttpRequest',
+                                        },
+                                    });
+                                    
+                                    if (submitResponse.ok) {
+                                        const result = await submitResponse.json();
+                                        if (result.success) {
+                                            // Reload page to show updated task
+                                            window.location.reload();
+                                        }
+                                    }
+                                } catch (err) {
+                                    console.error('Error submitting form:', err);
+                                    // Fallback to regular form submission
+                                    form.submit();
+                                }
+                            });
+                            
+                            // Re-attach close button handlers for dynamically added modal
+                            modal.querySelectorAll('[data-close-modal]').forEach((btn) => {
+                                btn.addEventListener('click', () => {
+                                    closeModal(modal);
+                                });
+                            });
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading edit form:', err);
+                // Fallback to navigation
+                window.location.href = `/task/${taskId}/edit/`;
+            }
+        });
+    });
+
+    // Task Drag and Drop
+    const taskList = document.querySelector('[data-task-list]');
+    if (taskList) {
+        let draggedTask = null;
+        let draggedOverTask = null;
+
+        taskList.addEventListener('dragstart', (e) => {
+            if (e.target.classList.contains('task-item') || e.target.closest('.task-item')) {
+                draggedTask = e.target.classList.contains('task-item') ? e.target : e.target.closest('.task-item');
+                draggedTask.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            }
+        });
+
+        taskList.addEventListener('dragend', (e) => {
+            if (draggedTask) {
+                draggedTask.classList.remove('dragging');
+                draggedTask = null;
+                draggedOverTask = null;
+            }
+        });
+
+        taskList.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const taskItem = e.target.closest('.task-item');
+            if (taskItem && taskItem !== draggedTask) {
+                draggedOverTask = taskItem;
+                const rect = taskItem.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                
+                if (e.clientY < midpoint) {
+                    taskItem.classList.add('drag-over-top');
+                    taskItem.classList.remove('drag-over-bottom');
+                } else {
+                    taskItem.classList.add('drag-over-bottom');
+                    taskItem.classList.remove('drag-over-top');
+                }
+            }
+        });
+
+        taskList.addEventListener('dragleave', (e) => {
+            const taskItem = e.target.closest('.task-item');
+            if (taskItem) {
+                taskItem.classList.remove('drag-over-top', 'drag-over-bottom');
+            }
+        });
+
+        taskList.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const targetTask = e.target.closest('.task-item');
+            
+            if (draggedTask && targetTask && draggedTask !== targetTask) {
+                const rect = targetTask.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                const insertBefore = e.clientY < midpoint;
+                
+                // Get new position
+                const tasks = Array.from(taskList.querySelectorAll('.task-item'));
+                const targetIndex = tasks.indexOf(targetTask);
+                const newPosition = insertBefore ? targetIndex : targetIndex + 1;
+                
+                // Move in DOM
+                if (insertBefore) {
+                    taskList.insertBefore(draggedTask, targetTask);
+                } else {
+                    taskList.insertBefore(draggedTask, targetTask.nextSibling);
+                }
+                
+                // Update position in database
+                const taskId = draggedTask.dataset.taskId;
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                
+                fetch(`/task/${taskId}/reorder/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken,
+                    },
+                    body: `position=${newPosition}`,
+                }).catch(err => {
+                    console.error('Error reordering task:', err);
+                    // Reload page on error
+                    window.location.reload();
+                });
+            }
+            
+            // Clean up
+            taskList.querySelectorAll('.task-item').forEach(item => {
+                item.classList.remove('drag-over-top', 'drag-over-bottom');
+            });
+        });
+    }
+
+    // Group Drag and Drop
+    const groupList = document.querySelector('[data-group-list]');
+    if (groupList) {
+        let draggedGroup = null;
+        let draggedOverGroup = null;
+
+        groupList.addEventListener('dragstart', (e) => {
+            const groupWrapper = e.target.closest('.sidebar-group-wrapper');
+            if (groupWrapper) {
+                draggedGroup = groupWrapper;
+                draggedGroup.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            }
+        });
+
+        groupList.addEventListener('dragend', (e) => {
+            if (draggedGroup) {
+                draggedGroup.classList.remove('dragging');
+                draggedGroup = null;
+                draggedOverGroup = null;
+            }
+        });
+
+        groupList.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            
+            const groupWrapper = e.target.closest('.sidebar-group-wrapper');
+            if (groupWrapper && groupWrapper !== draggedGroup) {
+                draggedOverGroup = groupWrapper;
+                const rect = groupWrapper.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                
+                if (e.clientY < midpoint) {
+                    groupWrapper.classList.add('drag-over-top');
+                    groupWrapper.classList.remove('drag-over-bottom');
+                } else {
+                    groupWrapper.classList.add('drag-over-bottom');
+                    groupWrapper.classList.remove('drag-over-top');
+                }
+            }
+        });
+
+        groupList.addEventListener('dragleave', (e) => {
+            const groupWrapper = e.target.closest('.sidebar-group-wrapper');
+            if (groupWrapper) {
+                groupWrapper.classList.remove('drag-over-top', 'drag-over-bottom');
+            }
+        });
+
+        groupList.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const targetGroup = e.target.closest('.sidebar-group-wrapper');
+            
+            if (draggedGroup && targetGroup && draggedGroup !== targetGroup) {
+                const rect = targetGroup.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                const insertBefore = e.clientY < midpoint;
+                
+                // Get new order
+                const groups = Array.from(groupList.querySelectorAll('.sidebar-group-wrapper'));
+                const targetIndex = groups.indexOf(targetGroup);
+                const newOrder = insertBefore ? targetIndex : targetIndex + 1;
+                
+                // Move in DOM
+                if (insertBefore) {
+                    groupList.insertBefore(draggedGroup, targetGroup);
+                } else {
+                    groupList.insertBefore(draggedGroup, targetGroup.nextSibling);
+                }
+                
+                // Update order in database
+                const groupId = draggedGroup.dataset.groupId;
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                
+                fetch(`/group/${groupId}/reorder/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken,
+                    },
+                    body: `order=${newOrder}`,
+                }).catch(err => {
+                    console.error('Error reordering group:', err);
+                    // Reload page on error
+                    window.location.reload();
+                });
+            }
+            
+            // Clean up
+            groupList.querySelectorAll('.sidebar-group-wrapper').forEach(item => {
+                item.classList.remove('drag-over-top', 'drag-over-bottom');
+            });
+        });
+    }
 })();

@@ -1,0 +1,27 @@
+{% load static %}
+<div class="modal" data-modal="task-edit-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-content">
+        <header class="modal-header">
+            <h2>Edytuj zadanie</h2>
+            <button class="modal-close" type="button" data-close-modal>&times;</button>
+        </header>
+        <form method="post" class="modal-form" action="{% url 'edit_task' task.id %}">
+            {% csrf_token %}
+            {% for field in form %}
+                <label class="form-field">
+                    <span>{{ field.label }}</span>
+                    {{ field }}
+                    {% if field.errors %}
+                        <small class="form-errors">{{ field.errors|striptags }}</small>
+                    {% endif %}
+                </label>
+            {% endfor %}
+            <footer class="form-actions">
+                <button class="btn primary" type="submit">Zapisz zmiany</button>
+                <button class="btn ghost" type="button" data-close-modal>Anuluj</button>
+            </footer>
+        </form>
+    </div>
+</div>
+

@@ -1,0 +1,74 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Django / Flask stuff:
+*.log
+local_settings.py
+db.sqlite3
+media/
+
+# virtualenv
+venv/
+env/
+.venv/
+.env/
+env.bak/
+venv.bak/
+
+# Environments
+.python-version
+
+# Pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# VS Code
+.vscode/
+
+# IDEs
+.idea/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# dotenv
+.env
+*.env
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+

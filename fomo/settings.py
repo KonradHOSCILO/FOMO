@@ -73,18 +73,16 @@ WSGI_APPLICATION = 'fomo.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+#
+# Na potrzeby lokalnego developmentu używamy SQLite (żeby nie trzeba było
+# instalować dodatkowych sterowników MySQL na Windows).
+# Konfigurację MySQL z Alibaba Cloud możesz trzymać osobno i użyć jej
+# na serwerze (np. przez zmienne środowiskowe).
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'fomodb',
-        'USER': 'fomo_user',
-        'PASSWORD': 'fsgergergregre23@',  # dokładnie jak w RDS
-        'HOST': 'rm-4xogl81d094wid7wj3o.rwlb.germany.rds.aliyuncs.com',  # bez http://
-        'PORT': '3306',
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-        },
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 

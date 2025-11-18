@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>FOMO • Edycja zadania</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'todo/styles.css' %}">
+</head>
+<body>
+<div class="edit-shell">
+    <section class="glass-panel edit-card">
+        <header class="panel-header">
+            <div>
+                <p>Aktualizuj</p>
+                <h2>{{ task.title }}</h2>
+            </div>
+            <a class="icon-button ghost" href="{% url 'task_list' %}{% if query_string %}?{{ query_string }}{% endif %}">&times;</a>
+        </header>
+        <form method="post" class="stacked-form">
+            {% csrf_token %}
+            {% for field in form %}
+                <label class="form-field {% if field.name in 'title description' %}full{% endif %}">
+                    <span>{{ field.label }}</span>
+                    {{ field }}
+                    {% if field.errors %}
+                        <small class="form-errors">{{ field.errors|striptags }}</small>
+                    {% endif %}
+                </label>
+            {% endfor %}
+            <div class="form-actions">
+                <a class="btn ghost" href="{% url 'task_list' %}{% if query_string %}?{{ query_string }}{% endif %}">Anuluj</a>
+                <button class="btn primary" type="submit">Zapisz zmiany</button>
+            </div>
+        </form>
+    </section>
+</div>
+<script src="{% static 'todo/dashboard.js' %}" defer></script>
+</body>
+</html>

@@ -13,70 +13,6 @@
 </head>
 <body data-query-string="{{ query_string }}">
 <div class="dashboard-layout">
-    <aside class="sidebar glass-panel">
-        <div class="brand">
-            <div class="brand-icon">⚡</div>
-            <div>
-                <p class="brand-title">FOMO Flow</p>
-                <p class="brand-subtitle">Plan made effortless</p>
-            </div>
-        </div>
-        <button class="theme-toggle" type="button" data-theme-toggle>
-            <span class="theme-toggle__icon">☀️</span>
-            <span>Tryb jasny / ciemny</span>
-        </button>
-
-        <section class="groups card-block">
-            <header>
-                <p>Twoje przestrzenie</p>
-                <small>Grupy i Inbox</small>
-            </header>
-            <ul class="group-list">
-                <li class="group-pill-row inbox">
-                    <span class="group-color"></span>
-                    <div>
-                        <strong>Inbox</strong>
-                        <small>{{ ungrouped_count }} zadań</small>
-                    </div>
-                    <a href="?group=" class="badge-link">Widok</a>
-                </li>
-                {% for group in groups %}
-                    <li class="group-pill-row">
-                        <span class="group-color" style="background: {{ group.color }}"></span>
-                        <div>
-                            <strong>{{ group.name }}</strong>
-                            <small>{{ group.task_count|default:0 }} zadań</small>
-                        </div>
-                        <a href="?group={{ group.id }}{% if active_sort and active_sort != 'priority' %}&amp;sort={{ active_sort }}{% endif %}" class="badge-link">Widok</a>
-                    </li>
-                {% empty %}
-                    <li class="group-pill-row empty">Dodaj pierwszą grupę, aby zacząć!</li>
-                {% endfor %}
-            </ul>
-
-            <details class="inline-details" {% if group_form.errors %}open{% endif %}>
-                <summary>➕ Nowa grupa</summary>
-                <form method="post" class="stacked-form compact">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="create_group">
-                    {% if group_form.non_field_errors %}
-                        <div class="form-errors">{{ group_form.non_field_errors|striptags }}</div>
-                    {% endif %}
-                    {% for field in group_form %}
-                        <label class="form-field">
-                            <span>{{ field.label }}</span>
-                            {{ field }}
-                            {% if field.errors %}
-                                <small class="form-errors">{{ field.errors|striptags }}</small>
-                            {% endif %}
-                        </label>
-                    {% endfor %}
-                    <button class="btn ghost w-full" type="submit">Zapisz grupę</button>
-                </form>
-            </details>
-        </section>
-    </aside>
-
     <main class="workspace">
         <header class="workspace-header glass-panel">
             <div>
@@ -87,7 +23,7 @@
                 <div class="chip">Łącznie: {{ stats.total }}</div>
                 <div class="dropdown" data-dropdown="view-controls">
                     <button class="btn ghost dropdown-toggle" type="button" data-toggle-dropdown>
-                        Widok • Sortowanie ▾
+                        Sortowanie ▾
                     </button>
                     <div class="dropdown-panel">
                         <form method="get" class="filters-form compact">
@@ -114,6 +50,9 @@
                         </form>
                     </div>
                 </div>
+                <button type="button" class="btn ghost icon-only" data-theme-toggle title="Przełącz motyw">
+                    <span class="theme-toggle__icon">☀️</span>
+                </button>
                 <button type="button" class="btn primary" data-open-modal="task-modal">➕ Nowe zadanie</button>
             </div>
         </header>
@@ -180,15 +119,78 @@
             </section>
         {% endif %}
 
+        <section class="group-toolbar glass-panel">
+            <form method="get" class="group-filter-form" data-all-active="{{ show_all_groups|yesno:'true,false' }}">
+                <input type="hidden" name="sort" value="{{ active_sort }}">
+                <div class="group-toolbar__chips">
+                    <label class="group-chip chip-toggle chip-toggle--all {% if show_all_groups %}is-active{% endif %}">
+                        <input type="checkbox" name="view_all" value="1" {% if show_all_groups %}checked{% endif %}>
+                        <span class="chip-color chip-color--all"></span>
+                        <div>
+                            <strong>Wszystkie</strong>
+                            <small>Pełny widok tablicy</small>
+                        </div>
+                    </label>
+                    <label class="group-chip chip-toggle chip-toggle--inbox {% if include_inbox %}is-active{% endif %}" data-group-chip="inbox">
+                        <input type="checkbox" name="include_inbox" value="1" {% if include_inbox %}checked{% endif %}>
+                        <span class="chip-color chip-color--inbox"></span>
+                        <div>
+                            <strong>Inbox</strong>
+                            <small>{{ ungrouped_count }} zadań</small>
+                        </div>
+                    </label>
+                    {% for group in groups %}
+                        <label class="group-chip chip-toggle {% if group.id in selected_group_ids %}is-active{% endif %}" data-group-chip="{{ group.id }}">
+                            <input type="checkbox" name="groups" value="{{ group.id }}" {% if group.id in selected_group_ids %}checked{% endif %}>
+                            <span class="chip-color" style="background: {{ group.color }}"></span>
+                            <div>
+                                <strong>{{ group.name }}</strong>
+                                <small>{{ group.task_count|default:0 }} zadań</small>
+                            </div>
+                        </label>
+                    {% empty %}
+                        <p class="empty-group-copy">Dodaj pierwszą grupę, aby zacząć!</p>
+                    {% endfor %}
+                </div>
+                <div class="group-toolbar__actions">
+                    <button class="btn primary" type="submit">Zastosuj widok</button>
+                    <a class="btn ghost" href="{% url 'task_list' %}{% if active_sort and active_sort != 'priority' %}?sort={{ active_sort }}{% endif %}">Wyczyść</a>
+                </div>
+            </form>
+
+            <details class="inline-details" {% if group_form.errors %}open{% endif %}>
+                <summary>➕ Nowa grupa</summary>
+                <form method="post" class="stacked-form compact">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create_group">
+                    {% if group_form.non_field_errors %}
+                        <div class="form-errors">{{ group_form.non_field_errors|striptags }}</div>
+                    {% endif %}
+                    {% for field in group_form %}
+                        <label class="form-field">
+                            <span>{{ field.label }}</span>
+                            {{ field }}
+                            {% if field.errors %}
+                                <small class="form-errors">{{ field.errors|striptags }}</small>
+                            {% endif %}
+                        </label>
+                    {% endfor %}
+                    <button class="btn ghost w-full" type="submit">Zapisz grupę</button>
+                </form>
+            </details>
+        </section>
+
         <section class="board glass-panel">
             {% if show_inbox_column %}
                 <div class="board-column" data-group-id="" data-group-name="Inbox">
                     <div class="column-header">
-                        <div>
+                        <div class="column-title">
                             <p>Inbox</p>
                             <small>Zadania bez grupy</small>
                         </div>
-                        <span class="chip">{{ ungrouped_tasks|length }}</span>
+                        <div class="column-actions">
+                            <span class="chip">{{ ungrouped_tasks|length }}</span>
+                        </div>
                     </div>
                     <div class="column-body" data-column-list>
                         {% for task in ungrouped_tasks %}
@@ -203,11 +205,28 @@
             {% for column in grouped_columns %}
                 <div class="board-column" data-group-id="{{ column.group.id }}" style="--group-accent: {{ column.group.color }}">
                     <div class="column-header">
-                        <div>
+                        <div class="column-title">
                             <p>{{ column.group.name }}</p>
                             <small>Priorytetyzuj i personalizuj</small>
                         </div>
-                        <span class="chip" style="--chip-color: {{ column.group.color }}">{{ column.tasks|length }}</span>
+                        <div class="column-actions">
+                            <span class="chip" style="--chip-color: {{ column.group.color }}">{{ column.tasks|length }}</span>
+                            <div class="dropdown column-dropdown" data-dropdown>
+                                <button class="icon-button tiny" type="button" data-toggle-dropdown aria-label="Zarządzaj grupą">
+                                    ⋮
+                                </button>
+                                <div class="dropdown-panel dropdown-panel--compact">
+                                    {% if column.group.name in default_group_names %}
+                                        <p class="dropdown-hint">Grupa systemowa</p>
+                                    {% else %}
+                                        <form method="post" action="{% url 'delete_group' column.group.id %}{% if query_string %}?{{ query_string }}{% endif %}">
+                                            {% csrf_token %}
+                                            <button class="dropdown-link danger" type="submit">Usuń grupę</button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="column-body" data-column-list>
                         {% for task in column.tasks %}
@@ -221,38 +240,38 @@
             {% endfor %}
         </section>
     </main>
+</div>
 
-    <div class="modal" data-modal="task-modal" aria-hidden="true">
-        <div class="modal-backdrop" data-close-modal></div>
-        <div class="modal-content glass-panel">
-            <header class="modal-header">
-                <div>
-                    <p>Nowe zadanie</p>
-                    <h2>Dodaj i personalizuj</h2>
-                </div>
-                <button class="icon-button" type="button" data-close-modal>&times;</button>
-            </header>
-            <form method="post" class="stacked-form">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="create_task">
-                {% if task_form.non_field_errors %}
-                    <div class="form-errors">{{ task_form.non_field_errors|striptags }}</div>
-                {% endif %}
-                {% for field in task_form %}
-                    <label class="form-field {% if field.name in 'title description' %}full{% endif %}">
-                        <span>{{ field.label }}</span>
-                        {{ field }}
-                        {% if field.errors %}
-                            <small class="form-errors">{{ field.errors|striptags }}</small>
-                        {% endif %}
-                    </label>
-                {% endfor %}
-                <footer class="form-actions">
-                    <button class="btn ghost" type="button" data-close-modal>Zamknij</button>
-                    <button class="btn primary" type="submit">Dodaj zadanie</button>
-                </footer>
-            </form>
-        </div>
+<div class="modal" data-modal="task-modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-content glass-panel">
+        <header class="modal-header">
+            <div>
+                <p>Nowe zadanie</p>
+                <h2>Dodaj i personalizuj</h2>
+            </div>
+            <button class="icon-button" type="button" data-close-modal>&times;</button>
+        </header>
+        <form method="post" class="stacked-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_task">
+            {% if task_form.non_field_errors %}
+                <div class="form-errors">{{ task_form.non_field_errors|striptags }}</div>
+            {% endif %}
+            {% for field in task_form %}
+                <label class="form-field {% if field.name in 'title description' %}full{% endif %}">
+                    <span>{{ field.label }}</span>
+                    {{ field }}
+                    {% if field.errors %}
+                        <small class="form-errors">{{ field.errors|striptags }}</small>
+                    {% endif %}
+                </label>
+            {% endfor %}
+            <footer class="form-actions">
+                <button class="btn ghost" type="button" data-close-modal>Zamknij</button>
+                <button class="btn primary" type="submit">Dodaj zadanie</button>
+            </footer>
+        </form>
     </div>
 </div>
 <script src="{% static 'todo/dashboard.js' %}" defer></script>

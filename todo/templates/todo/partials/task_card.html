@@ -7,22 +7,26 @@
 >
     <header class="task-card__head">
         <div class="task-card__icon">{{ task.icon|default:"📌" }}</div>
-        <div class="task-card__labels">
-            <span class="priority-pill priority-{{ task.priority }}">{{ task.get_priority_display }}</span>
-            {% if task.repeat_frequency != task.RepeatFrequency.NONE %}
-                <span class="badge soft">↻ {{ task.get_repeat_frequency_display }}</span>
-            {% endif %}
+        <div class="task-card__heading">
+            <div class="task-card__title-row">
+                <div class="task-card__title">{{ task.title }}</div>
+                <form method="post" action="{% url 'toggle_task' task.id %}{% if query_string %}?{{ query_string }}{% endif %}" class="toggle-form">
+                    {% csrf_token %}
+                    <button type="submit" class="toggle-chip" title="Oznacz jako wykonane">
+                        {% if task.is_completed %}✔{% else %}○{% endif %}
+                    </button>
+                </form>
+            </div>
+            <div class="task-card__labels">
+                <span class="priority-pill priority-{{ task.priority }}">{{ task.get_priority_display }}</span>
+                {% if task.repeat_frequency != task.RepeatFrequency.NONE %}
+                    <span class="badge soft">↻ {{ task.get_repeat_frequency_display }}</span>
+                {% endif %}
+            </div>
         </div>
-        <form method="post" action="{% url 'toggle_task' task.id %}{% if query_string %}?{{ query_string }}{% endif %}" class="toggle-form">
-            {% csrf_token %}
-            <button type="submit" class="toggle-chip" title="Oznacz jako wykonane">
-                {% if task.is_completed %}✔{% else %}○{% endif %}
-            </button>
-        </form>
     </header>
 
     <div class="task-card__body">
-        <div class="task-card__title">{{ task.title }}</div>
         {% if task.description %}
             <p class="task-card__description">{{ task.description }}</p>
         {% endif %}

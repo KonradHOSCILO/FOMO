@@ -24,9 +24,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-z1)9eki2sq$o_%hft1xr1l*r2i7^*d*w-*awtmiw*_g!n(r3dn'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["fomo-projekt.tech", "www.fomo-projekt.tech", "51.83.252.122", "localhost", "127.0.0.1", "fomo-projekt.tech"]
 
 
 # Application definition

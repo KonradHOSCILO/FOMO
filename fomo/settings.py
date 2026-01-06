@@ -6,9 +6,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-change-me")
-DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
+DEBUG = False
 
-ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+ALLOWED_HOSTS = ["fomo-projekt.tech", "www.fomo-projekt.tech", "51.83.252.122", "localhost", "127.0.0.1", "fomo-projekt.tech"]
+
 
 INSTALLED_APPS = [
     "django.contrib.admin",

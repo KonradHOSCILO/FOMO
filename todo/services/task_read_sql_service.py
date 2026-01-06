@@ -13,6 +13,9 @@ def _conn():
         cursorclass=pymysql.cursors.DictCursor,
         ssl={"ssl-mode": "REQUIRED"},
         autocommit=True,
+        connect_timeout=5,
+        read_timeout=10,
+        write_timeout=10,
     )
 
 

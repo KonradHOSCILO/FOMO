@@ -6,219 +6,319 @@
     <title>FOMO</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'todo/styles.css' %}">
+
+<style>
+body { font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#f8fafc; }
+
+.header-user { margin: 0 20px; font-weight: 600; opacity: .85; }
+
+.sidebar { padding: 18px 12px; }
+.sidebar-groups { display:flex; flex-direction:column; gap:6px; }
+.sidebar-group-btn {
+  display:block; padding:10px 14px; border-radius:10px; text-decoration:none; color:#0f172a;
+}
+.sidebar-group-btn:hover { background: rgba(37,99,235,.06); }
+.sidebar-group-btn.active { background: rgba(37,99,235,.12); font-weight:600; }
+
+.task-input-container { padding: 16px; }
+.task-input-row { display:flex; gap:12px; }
+.task-input { flex:1; padding:12px 14px; border-radius:12px; }
+.task-description-input { margin-top:10px; padding:12px 14px; border-radius:12px; }
+.task-options-row {
+  margin-top:14px; padding-top:14px; border-top:1px solid rgba(15,23,42,.08);
+  display:flex; flex-wrap:wrap; gap:18px; align-items:center;
+}
+.group-selector, .repeat-options, .file-selector { display:flex; align-items:center; gap:10px; }
+.select { padding:8px 10px; border-radius:10px; }
+
+.repeat-option {
+  display:inline-flex; align-items:center; gap:8px; padding:7px 12px;
+  border-radius:999px; border:1px solid rgba(15,23,42,.12); cursor:pointer;
+}
+.repeat-option input { accent-color:#2563eb; }
+.repeat-option:has(input:checked) { background: rgba(37,99,235,.08); border-color: rgba(37,99,235,.35); }
+
+.task-lists { margin-top:16px; display:flex; flex-direction:column; gap:12px; }
+.task-item {
+  display:flex; justify-content:space-between; gap:14px;
+  padding:16px; background:#fff; border-radius:14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.06);
+}
+.task-text { font-weight:600; font-size:15px; }
+.task-description { margin-top:6px; font-size:13px; color:#475569; white-space:pre-wrap; }
+
+.task-meta { margin-top:10px; display:flex; align-items:center; gap:10px; font-size:12px; color:#64748b; }
+.meta-divider { width:1px; height:12px; background: rgba(15,23,42,.25); }
+
+.task-actions { display:flex; gap:10px; align-items:flex-start; }
+.task-delete {
+  width:34px; height:34px; border-radius:10px;
+  border:1px solid rgba(239,68,68,.25); background: rgba(239,68,68,.1);
+  color:#ef4444; cursor:pointer;
+}
+
+.task-edit-btn {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(15,23,42,.12);
+  background: #f8fafc;
+  cursor: pointer;
+}
+.task-edit-btn:hover { background:#eef2ff; border-color: rgba(37,99,235,.25); }
+
+.task-edit-form {
+  display:none;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(15,23,42,.18);
+}
+.task-edit-form.visible { display:block; }
+
+.task-edit-grid { display:grid; grid-template-columns: 1fr; gap:10px; }
+.task-edit-grid input, .task-edit-grid textarea, .task-edit-grid select {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(15,23,42,.12);
+}
+
+.task-edit-actions { display:flex; gap:10px; }
+.task-edit-save {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(37,99,235,.25);
+  background: rgba(37,99,235,.92);
+  color:#fff;
+  cursor:pointer;
+}
+.task-edit-cancel {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(15,23,42,.12);
+  background: #fff;
+  cursor:pointer;
+}
+
+.task-attachments { margin-top:10px; }
+.task-attachments-title { font-size:12px; opacity:.75; margin-bottom:4px; }
+.task-attachments-list { padding-left:18px; margin:0; }
+.task-attachments-link { color:#2563eb; text-decoration:none; }
+.task-attachments-link:hover { text-decoration:underline; }
+</style>
 </head>
+
 <body>
 <div class="microsoft-todo-layout">
-    <!-- Top Header Bar -->
-    <header class="top-header">
-        <div class="header-left">
-            <h1 class="app-title">FOMO</h1>
-        </div>
-        <nav class="header-tabs">
-            <a href="?view=today" class="tab {% if active_view == 'today' %}active{% endif %}">Dzisiaj</a>
-            <span class="tab-divider">|</span>
-            <a href="?view=tomorrow" class="tab {% if active_view == 'tomorrow' %}active{% endif %}">Jutro</a>
-            <span class="tab-divider">|</span>
-            <a href="?view=week" class="tab {% if active_view == 'week' %}active{% endif %}">tydzień</a>
-            <span class="tab-divider">|</span>
-            <a href="?view=month" class="tab {% if active_view == 'month' %}active{% endif %}">Miesiąc</a>
-        </nav>
-    </header>
 
-    <div class="main-container">
-        <!-- Left Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-groups" data-group-list>
-                <a href="?view={{ active_view }}" class="sidebar-group-btn sidebar-group-btn--all {% if not active_group %}active{% endif %}">
-                    Wszystkie
-                </a>
-                {% for group in groups %}
-                    <div class="sidebar-group-wrapper" 
-                         data-group-id="{{ group.id }}"
-                         data-group-order="{{ group.order }}"
-                         draggable="true">
-                        <div class="group-drag-handle" title="Przeciągnij, aby zmienić kolejność">⋮⋮</div>
-                        <button class="sidebar-group-btn {% if active_group == group.id %}active{% endif %}" 
-                                data-group-id="{{ group.id }}">
-                            <span class="group-color-indicator" style="background-color: {{ group.color }}"></span>
-                            {{ group.name }}
-                        </button>
-                        <button type="button" class="group-menu-btn" data-toggle-group-menu="{{ group.id }}" title="Opcje grupy">⋮</button>
-                        <div class="group-menu-dropdown" data-group-menu="{{ group.id }}">
-                            <button type="button" class="group-menu-item" data-edit-group="{{ group.id }}">Edytuj kolor</button>
-                            {% if group.name not in default_group_names %}
-                                <form method="post" action="{% url 'delete_group' group.id %}" class="group-menu-form">
-                                    {% csrf_token %}
-                                    <button type="submit" class="group-menu-item danger">Usuń grupę</button>
-                                </form>
-                            {% endif %}
-                        </div>
-                    </div>
-                {% empty %}
-                    <button class="sidebar-group-btn">Ważne</button>
-                    <button class="sidebar-group-btn">Powtarzalne</button>
-                    <button class="sidebar-group-btn">Sprzątanie</button>
-                {% endfor %}
-            </div>
+<header class="top-header">
+  <div class="header-left">
+    <h1 class="app-title">FOMO</h1>
+  </div>
 
-            <button class="sidebar-button add-group-btn" type="button" data-open-group-form>
-                + Dodaj grupę
-            </button>
-        </aside>
+  <nav class="header-tabs">
+    <a href="{% url 'task_list' %}" class="tab active">Zadania</a>
 
-        <!-- Main Content Area -->
-        <main class="content-area">
-            <!-- New Task Input -->
-            <div class="task-input-container visible" data-task-input-container>
-                <form method="post" class="task-input-form" data-task-form>
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="create_task">
-                    <div class="task-input-row">
-                        <input type="text" 
-                               name="task-title" 
-                               class="task-input" 
-                               placeholder="Nowe zadanie..." 
-                               autocomplete="off"
-                               data-task-title-input>
-                        <button type="submit" class="task-submit-btn" title="Dodaj zadanie">✓</button>
-                    </div>
-                    <textarea name="task-description" 
-                              class="task-description-input" 
-                              placeholder="Opis zadania (opcjonalnie)" 
-                              rows="2"
-                              data-task-description-input></textarea>
-                    
-                    <!-- Repeat Options and Group Selection - shown under input -->
-                    <div class="task-options-row">
-                        <div class="repeat-options" data-repeat-options>
-                            <span class="repeat-label">powtarzanie:</span>
-                            <label class="repeat-option">
-                                <input type="radio" name="repeat_frequency" value="none" checked>
-                                <span>Brak</span>
-                            </label>
-                            <label class="repeat-option">
-                                <input type="radio" name="repeat_frequency" value="daily">
-                                <span>Dziennie</span>
-                            </label>
-                            <label class="repeat-option">
-                                <input type="radio" name="repeat_frequency" value="weekly">
-                                <span>Tygodniowo</span>
-                            </label>
-                            <label class="repeat-option">
-                                <input type="radio" name="repeat_frequency" value="monthly">
-                                <span>Miesięcznie</span>
-                            </label>
-                            <label class="repeat-option">
-                                <input type="radio" name="repeat_frequency" value="yearly">
-                                <span>Rocznie</span>
-                            </label>
-                        </div>
-                        <div class="group-selector">
-                            <button type="button" class="group-selector-btn" data-toggle-group-dropdown>
-                                <span class="group-selector-label">Grupa:</span>
-                                <span class="group-selector-value" data-selected-group-name>Brak</span>
-                                <span class="group-selector-arrow">▾</span>
-                            </button>
-                            <div class="group-selector-dropdown" data-group-selector-dropdown>
-                                <button type="button" class="group-selector-option" data-group-id="" data-group-name="Brak">
-                                    Brak
-                                </button>
-                                {% for group in groups %}
-                                    <button type="button" class="group-selector-option" data-group-id="{{ group.id }}" data-group-name="{{ group.name }}">
-                                        {{ group.name }}
-                                    </button>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
+    {% if request.user.is_authenticated %}
+      <span class="header-user">{{ request.user.mail }}</span>
+    {% endif %}
 
-                    <!-- Hidden fields for form submission -->
-                    <input type="hidden" name="task-repeat_frequency" value="none" id="id_task_repeat_frequency">
-                    <input type="hidden" name="task-group" value="" id="id_task_group">
-                    <input type="hidden" name="task-description" value="" id="id_task_description">
-                </form>
-            </div>
+    <span class="tab-divider">|</span>
+    <a href="{% url 'logout' %}" class="tab">Wyloguj</a>
+  </nav>
+</header>
 
-            <!-- Task Lists - COMPLETELY REWRITTEN -->
-            <div class="task-lists" data-task-list>
-                {% for task in tasks %}
-                    <div class="task-item" 
-                         data-task-id="{{ task.id }}" 
-                         data-task-group="{{ task.group_id|default:'' }}"
-                         data-task-position="{{ task.position }}"
-                         draggable="true">
-                        <div class="task-drag-handle" title="Przeciągnij, aby zmienić kolejność">⋮⋮</div>
-                        <form method="post" action="{% url 'toggle_task' task.id %}" class="task-toggle-form">
-                            {% csrf_token %}
-                            <input type="checkbox" 
-                                   class="task-checkbox" 
-                                   {% if task.is_completed %}checked{% endif %}
-                                   onchange="this.form.submit()">
-                        </form>
-                        <div class="task-content">
-                            <span class="task-text {% if task.is_completed %}completed{% endif %}">{{ task.title }}</span>
-                            {% if task.description %}
-                                <span class="task-description">{{ task.description }}</span>
-                            {% endif %}
-                        </div>
-                        {% if task.group %}
-                            <span class="task-group-badge" style="background-color: {{ task.group.color }}20; color: {{ task.group.color }};">
-                                {{ task.group.name }}
-                            </span>
-                        {% endif %}
-                        <div class="task-actions">
-                            <button type="button" class="task-edit" data-edit-task="{{ task.id }}" title="Edytuj">✎</button>
-                            <form method="post" action="{% url 'delete_task' task.id %}" class="task-delete-form">
-                                {% csrf_token %}
-                                <button type="submit" class="task-delete" title="Usuń">✕</button>
-                            </form>
-                        </div>
-                    </div>
-                {% empty %}
-                    <div class="empty-state">
-                        <p>Brak zadań do wyświetlenia</p>
-                        <small>Dodaj nowe zadanie powyżej</small>
-                    </div>
-                {% endfor %}
-            </div>
-        </main>
+<div class="main-container">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-groups">
+    <a href="{% url 'task_list' %}" class="sidebar-group-btn {% if not selected_group %}active{% endif %}">
+      Wszystkie
+    </a>
+
+    {% for g in groups %}
+      <a href="{% url 'task_list' %}?group={{ g|urlencode }}"
+         class="sidebar-group-btn {% if selected_group == g %}active{% endif %}">
+        {{ g }}
+      </a>
+    {% endfor %}
+  </div>
+</aside>
+
+<!-- CONTENT -->
+<main class="content-area">
+
+<!-- FORM CREATE -->
+<div class="task-input-container">
+  <form method="post" action="{% url 'create_task' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="task-input-row">
+      <input name="title" class="task-input" placeholder="Nowe zadanie..." required>
+      <button class="task-submit-btn" title="Dodaj">✓</button>
     </div>
 
-    <!-- Add Group Modal -->
-    <div class="modal" data-modal="group-modal" aria-hidden="true">
-        <div class="modal-backdrop" data-close-modal></div>
-        <div class="modal-content">
-            <header class="modal-header">
-                <h2>Dodaj grupę</h2>
-                <button class="modal-close" type="button" data-close-modal>&times;</button>
-            </header>
-            <form method="post" class="modal-form">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="create_group">
-                {% for field in group_form %}
-                    <label class="form-field">
-                        <span>{{ field.label }}</span>
-                        {{ field }}
-                        {% if field.errors %}
-                            <small class="form-errors">{{ field.errors|striptags }}</small>
-                        {% endif %}
-                    </label>
-                {% endfor %}
-                <footer class="form-actions">
-                    <button class="btn primary" type="submit">Dodaj</button>
-                    <button class="btn ghost" type="button" data-close-modal>Anuluj</button>
-                </footer>
-            </form>
-        </div>
-    </div>
+    <textarea name="description" class="task-description-input" placeholder="Opis zadania (opcjonalnie)" rows="2"></textarea>
 
-    <!-- Task Edit Modal (loaded dynamically) -->
-    <div id="task-edit-modal-container"></div>
+    <div class="task-options-row">
+
+      <div class="group-selector">
+        <span>Grupa:</span>
+        <select name="group" class="select">
+          {% for g in groups %}
+            <option value="{{ g }}">{{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="repeat-options">
+        <span>Status:</span>
+
+        <label class="repeat-option">
+          <input type="radio" name="status" value="todo" checked>
+          <span>Do zrobienia</span>
+        </label>
+
+        <label class="repeat-option">
+          <input type="radio" name="status" value="in_progress">
+          <span>W trakcie</span>
+        </label>
+
+        <label class="repeat-option">
+          <input type="radio" name="status" value="done">
+          <span>Zrobione</span>
+        </label>
+      </div>
+
+      <div class="file-selector">
+        <span>Plik:</span>
+        <input type="file" name="file">
+      </div>
+    </div>
+  </form>
 </div>
-<script src="{% static 'todo/dashboard.js' %}" defer></script>
+
+<!-- TASKS -->
+<div class="task-lists">
+{% for task in tasks %}
+  <div class="task-item" data-task-id="{{ task.id }}">
+
+    <div class="task-content" style="flex:1; min-width:0;">
+      <div class="task-text">{{ task.title }}</div>
+
+      {% if task.description %}
+        <div class="task-description">{{ task.description }}</div>
+      {% endif %}
+
+      <div class="task-meta">
+        <span>Grupa: {{ task.group }}</span>
+        <span class="meta-divider"></span>
+        <span>Status: {{ task.status_label }}</span>
+        <span class="meta-divider"></span>
+        <span>Dodano: {{ task.created_at }}</span>
+      </div>
+
+      {% if task.attachments and task.attachments|length > 0 %}
+        <div class="task-attachments">
+          <div class="task-attachments-title">Załączniki:</div>
+          <ul class="task-attachments-list">
+            {% for att in task.attachments %}
+              <li>
+                <a class="task-attachments-link" href="{{ att.file_url }}" target="_blank" rel="noopener">
+                  {{ att.filename }}
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      <!-- EDIT FORM -->
+      <form class="task-edit-form" method="post"
+            action="{% url 'update_task' task.id %}{% if selected_group %}?group={{ selected_group|urlencode }}{% endif %}">
+        {% csrf_token %}
+        <div class="task-edit-grid">
+          <input type="text" name="title" value="{{ task.title }}" required>
+
+          <textarea name="description" rows="2" placeholder="Opis (opcjonalnie)">{% if task.description %}{{ task.description }}{% endif %}</textarea>
+
+          <select name="group">
+            {% for g in groups %}
+              <option value="{{ g }}" {% if task.group == g %}selected{% endif %}>{{ g }}</option>
+            {% endfor %}
+          </select>
+
+          <div class="repeat-options" style="margin-top:6px;">
+  <span>Status:</span>
+
+  <label class="repeat-option">
+    <input type="radio" name="status" value="todo" {% if task.status == "todo" %}checked{% endif %}>
+    <span>Do zrobienia</span>
+  </label>
+
+  <label class="repeat-option">
+    <input type="radio" name="status" value="in_progress" {% if task.status == "in_progress" %}checked{% endif %}>
+    <span>W trakcie</span>
+  </label>
+
+  <label class="repeat-option">
+    <input type="radio" name="status" value="done" {% if task.status == "done" %}checked{% endif %}>
+    <span>Zrobione</span>
+  </label>
+</div>
+        </div>
+
+        <div class="task-edit-actions" style="margin-top:10px;">
+          <button type="submit" class="task-edit-save">Zapisz</button>
+          <button type="button" class="task-edit-cancel">Anuluj</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="task-actions">
+      <button type="button" class="task-edit-btn" data-edit-toggle>Edytuj</button>
+
+      <form method="post" action="{% url 'delete_task' task.id %}">
+        {% csrf_token %}
+        <button class="task-delete" title="Usuń">✕</button>
+      </form>
+    </div>
+
+  </div>
+{% empty %}
+  <p>Brak zadań</p>
+{% endfor %}
+</div>
+
+</main>
+</div>
+</div>
+
+<script>
+document.addEventListener("click", (e) => {
+  const toggle = e.target.closest("[data-edit-toggle]");
+  if (!toggle) return;
+
+  const taskItem = toggle.closest(".task-item");
+  const form = taskItem.querySelector(".task-edit-form");
+  if (!form) return;
+
+  form.classList.toggle("visible");
+});
+
+document.addEventListener("click", (e) => {
+  const cancel = e.target.closest(".task-edit-cancel");
+  if (!cancel) return;
+
+  const form = cancel.closest(".task-edit-form");
+  form.classList.remove("visible");
+});
+</script>
+
 </body>
 </html>

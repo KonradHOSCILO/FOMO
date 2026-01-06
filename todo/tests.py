@@ -19,7 +19,7 @@ class TaskModelTests(TestCase):
         ordered = list(Task.objects.sorted("priority"))
         self.assertEqual([task.title for task in ordered], ["Wysokie", "Średnie", "Niskie"])
 
-        # ensure queryset can be filtered by group
+
         low.group = self.group_work
         low.save()
         ordered_group = list(Task.objects.sorted("priority", group_id=self.group_work.id))

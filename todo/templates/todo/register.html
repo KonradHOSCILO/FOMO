@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% load static %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>FOMO • Rejestracja</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{% static 'todo/styles.css' %}">
+</head>
+<body>
+  <div class="microsoft-todo-layout">
+    <div class="main-container">
+      <main class="content-area">
+        <div class="modal" aria-hidden="false">
+          <div class="modal-content">
+            <header class="modal-header">
+              <h2>Załóż konto</h2>
+            </header>
+
+            <form method="post" class="modal-form">
+              {% csrf_token %}
+              {% if form.non_field_errors %}
+                <small class="form-errors">{{ form.non_field_errors|striptags }}</small>
+              {% endif %}
+
+              <label class="form-field">
+                <span>Email</span>
+                {{ form.email }}
+                {% if form.email.errors %}<small class="form-errors">{{ form.email.errors|striptags }}</small>{% endif %}
+              </label>
+
+              <label class="form-field">
+                <span>Hasło</span>
+                {{ form.password }}
+                {% if form.password.errors %}<small class="form-errors">{{ form.password.errors|striptags }}</small>{% endif %}
+              </label>
+
+              <footer class="form-actions">
+                <button class="btn primary" type="submit">Utwórz konto</button>
+                <a class="btn ghost" href="{% url 'login' %}" style="text-decoration:none;">Mam już konto</a>
+              </footer>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
+</title>
+</head>
+<body>
+
+</body>
+</html>

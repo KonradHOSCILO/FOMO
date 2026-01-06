@@ -1,163 +1,116 @@
-from datetime import timedelta
-
-from dateutil.relativedelta import relativedelta
+from django.conf import settings
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models
-from django.db.models import Max
 from django.utils import timezone
-from django.utils.text import slugify
+
+class AppUserManager(BaseUserManager):
+    def create_user(self, email: str, password: str | None = None, **extra_fields):
+        if not email:
+            raise ValueError("Email is required")
+        email = self.normalize_email(email)
+        user = self.model(mail=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email=None, password=None, **extra_fields):
+        if email is None:
+            email = extra_fields.pop("username", None) or extra_fields.pop("mail", None)
+
+        if not email:
+            raise ValueError("Superuser email is required")
+
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_active", True)
+
+        return self.create_user(email=email, password=password, **extra_fields)
+
+
+class User(AbstractBaseUser, PermissionsMixin):
+    """
+    Dopasowane do schematu:
+    users: id, mail, password_hash, created_at
+    """
+    mail = models.EmailField(unique=True, db_column="mail")
+    password = models.CharField(max_length=128, db_column="password_hash")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+
+    objects = AppUserManager()
+
+    USERNAME_FIELD = "mail"
+    REQUIRED_FIELDS: list[str] = []
+
+    class Meta:
+        db_table = "users"
+
+    def __str__(self):
+        return self.mail
 
 
 class TaskGroup(models.Model):
-    """
-    Kolekcja zadań reprezentująca kategorię lub kontekst (np. Sprzątanie).
-    """
-
-    name = models.CharField(max_length=80, unique=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="task_groups")
+    name = models.CharField(max_length=255)
     color = models.CharField(max_length=20, default="#5c6b7a")
-    order = models.PositiveIntegerField(default=0)
-    slug = models.SlugField(max_length=80, unique=True, blank=True)
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
-        ordering = ["order", "name"]
+        db_table = "task_groups"
+        unique_together = ("user", "name")
+        ordering = ["order", "id"]
 
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            base = slugify(self.name) or "group"
-            candidate = base
-            suffix = 1
-            while TaskGroup.objects.exclude(pk=self.pk).filter(slug=candidate).exists():
-                suffix += 1
-                candidate = f"{base}-{suffix}"
-            self.slug = candidate
-
-        if self.order == 0:
-            max_order = TaskGroup.objects.exclude(pk=self.pk).aggregate(max_=Max("order"))["max_"] or 0
-            self.order = max_order + 1
-
-        super().save(*args, **kwargs)
-
-    def __str__(self) -> str:
-        return self.name
-
-
-class TaskManager(models.Manager):
-    """Simple manager - just optimizes queries with select_related."""
-    def get_queryset(self):
-        return super().get_queryset().select_related("group")
+    def __str__(self):
+        return f"{self.name} ({self.user})"
 
 
 class Task(models.Model):
-    """
-    Pojedyncze zadanie w aplikacji FOMO.
-    """
+    class Status(models.TextChoices):
+        TODO = "todo", "New (todo)"
+        IN_PROGRESS = "in_progress", "W trakcie"
+        DONE = "done", "Zrobione"
+        ARCHIVED = "archived", "Archiwum"
 
-    class Priority(models.TextChoices):
-        LOW = "low", "Niski"
-        MEDIUM = "medium", "Średni"
-        HIGH = "high", "Wysoki"
+    class Group(models.TextChoices):
+        IMPORTANT = "Ważne", "Ważne"
+        CLEANING = "Sprzątanie", "Sprzątanie"
+        WORK = "Praca", "Praca"
+        FRIENDS = "Znajomi", "Znajomi"
+        FAMILY = "Rodzina", "Rodzina"
 
-    class RepeatFrequency(models.TextChoices):
-        NONE = "none", "Brak"
-        DAILY = "daily", "Codziennie"
-        WEEKLY = "weekly", "Co tydzień"
-        MONTHLY = "monthly", "Co miesiąc"
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="tasks")
+
+    group = models.CharField(max_length=255, choices=Group.choices, default=Group.IMPORTANT)
 
     title = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-    group = models.ForeignKey(TaskGroup, null=True, blank=True, on_delete=models.SET_NULL, related_name="tasks")
-    priority = models.CharField(max_length=16, choices=Priority.choices, default=Priority.MEDIUM)
-    accent_color = models.CharField(max_length=20, default="#6c7ae0")
-    icon = models.CharField(max_length=60, default="ph-check-circle")
-    theme_variant = models.CharField(
-        max_length=20,
-        default="base",
-        help_text="Wariant stylistyczny kafelka (np. pastel, mono, vibrant).",
-    )
-    is_completed = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    completed_at = models.DateTimeField(null=True, blank=True)
-    due_date = models.DateTimeField(null=True, blank=True)
-    repeat_frequency = models.CharField(max_length=16, choices=RepeatFrequency.choices, default=RepeatFrequency.NONE)
-    repeat_interval = models.PositiveIntegerField(default=1)
-    repeat_until = models.DateField(null=True, blank=True)
-    position = models.PositiveIntegerField(default=0)
+    description = models.TextField(null=True, blank=True)
 
-    objects = TaskManager()
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.TODO)
+
+    remind_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
-        ordering = ["is_completed", "-priority", "position", "-created_at"]
+        db_table = "tasks"
+        ordering = ["-created_at", "-id"]
 
-    def __str__(self) -> str:
+    def __str__(self):
         return self.title
 
-    # ----- Ordering helpers -------------------------------------------------
-    def _assign_position_if_needed(self):
-        if self.position:
-            return
-        last_position = (
-            Task.objects.filter(group=self.group)
-            .exclude(pk=self.pk)
-            .aggregate(max_pos=Max("position"))["max_pos"]
-            or 0
-        )
-        self.position = last_position + 1
 
-    # ----- Repeating logic --------------------------------------------------
-    @property
-    def should_repeat(self) -> bool:
-        return self.repeat_frequency != self.RepeatFrequency.NONE
+class Attachment(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="attachments")
+    filename = models.CharField(max_length=255)
+    object_key = models.CharField(max_length=1024)
+    file_url = models.TextField()
+    created_at = models.DateTimeField(default=timezone.now)
 
-    def calculate_next_due_date(self):
-        if not self.should_repeat:
-            return None
+    class Meta:
+        db_table = "attachments"
+        ordering = ["-created_at", "-id"]
 
-        base = self.due_date or timezone.now()
-        if self.repeat_frequency == self.RepeatFrequency.DAILY:
-            candidate = base + timedelta(days=self.repeat_interval)
-        elif self.repeat_frequency == self.RepeatFrequency.WEEKLY:
-            candidate = base + timedelta(weeks=self.repeat_interval)
-        elif self.repeat_frequency == self.RepeatFrequency.MONTHLY:
-            candidate = base + relativedelta(months=self.repeat_interval)
-        else:
-            return None
-
-        if self.repeat_until and candidate.date() > self.repeat_until:
-            return None
-        return candidate
-
-    def spawn_next_occurrence(self):
-        """Create next occurrence of a repeating task (simplified - only essential fields)."""
-        next_due = self.calculate_next_due_date()
-        if not next_due:
-            return None
-
-        # Create new task with same essential properties
-        return Task.objects.create(
-            title=self.title,
-            group=self.group,
-            priority=self.priority,
-            due_date=next_due,
-            repeat_frequency=self.repeat_frequency,
-            repeat_interval=self.repeat_interval,
-            repeat_until=self.repeat_until,
-        )
-
-    def toggle_completion(self):
-        self.is_completed = not self.is_completed
-        self.completed_at = timezone.now() if self.is_completed else None
-        self.save(update_fields=["is_completed", "completed_at"])
-        if self.is_completed and self.should_repeat:
-            self.spawn_next_occurrence()
-
-    def move_to(self, group: TaskGroup | None, position: int | None = None):
-        self.group = group
-        if not position or position < 1:
-            self.position = 0
-        else:
-            self.position = position
-        self.save()
-
-    # ----- CRUD overrides ---------------------------------------------------
-    def save(self, *args, **kwargs):
-        self._assign_position_if_needed()
-        super().save(*args, **kwargs)
+    def __str__(self):
+        return self.filename

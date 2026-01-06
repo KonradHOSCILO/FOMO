@@ -11,7 +11,6 @@ conn = MySQLdb.connect(
 
 cursor = conn.cursor()
 
-# --- TABELA USER ---
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -20,7 +19,6 @@ CREATE TABLE IF NOT EXISTS users (
 );
 """)
 
-# --- TABELA TASK ---
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS tasks (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -32,7 +30,6 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 """)
 
-# --- DODAJ USERA ---
 cursor.execute(
     "INSERT INTO users (email) VALUES (%s)",
     ("konrad@fomo.pl",)
@@ -40,7 +37,6 @@ cursor.execute(
 user_id = cursor.lastrowid
 print("✅ Dodano usera, ID:", user_id)
 
-# --- DODAJ TASK ---
 cursor.execute(
     "INSERT INTO tasks (user_id, title, status) VALUES (%s, %s, %s)",
     (user_id, "Pierwsze zadanie", "todo")

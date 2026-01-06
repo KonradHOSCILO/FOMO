@@ -29,14 +29,12 @@ conn = pymysql.connect(
 )
 
 with conn.cursor(pymysql.cursors.DictCursor) as cur:
-    # --- tabelki ---
     cur.execute("SHOW TABLES;")
     tables = cur.fetchall()
     print("=== TABELKI ===")
     for t in tables:
         print("-", next(iter(t.values())))
 
-    # --- liczniki (od razu widać czy puste) ---
     cur.execute("SELECT COUNT(*) AS cnt FROM users;")
     print("\nusers:", cur.fetchone()["cnt"])
 
@@ -46,7 +44,6 @@ with conn.cursor(pymysql.cursors.DictCursor) as cur:
     cur.execute("SELECT COUNT(*) AS cnt FROM attachments;")
     print("attachments:", cur.fetchone()["cnt"])
 
-    # --- pełne dane ---
     cur.execute("SELECT * FROM users ORDER BY id DESC;")
     print_rows("USERS", cur.fetchall())
 
@@ -56,7 +53,6 @@ with conn.cursor(pymysql.cursors.DictCursor) as cur:
     cur.execute("SELECT * FROM attachments ORDER BY id DESC;")
     print_rows("ATTACHMENTS", cur.fetchall())
 
-    # --- podgląd połączeń (co do czego należy) ---
     cur.execute("""
         SELECT
             u.id AS user_id, u.email, u.created_at,

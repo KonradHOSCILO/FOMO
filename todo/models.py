@@ -28,12 +28,9 @@ class AppUserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    """
-    Dopasowane do schematu:
-    users: id, mail, password_hash, created_at
-    """
+    id = models.BigAutoField(primary_key=True)
+
     mail = models.EmailField(unique=True, db_column="mail")
-    password = models.CharField(max_length=128, db_column="password_hash")
     created_at = models.DateTimeField(default=timezone.now)
 
     is_active = models.BooleanField(default=True)

@@ -170,7 +170,6 @@ Skutki:
 **Rozwiązanie:**  
 Poprawna konfiguracja zmiennych środowiskowych po stronie serwera oraz ich jawne ładowanie w kontekście aplikacji.
 
-*(zdjęcie – błąd Django związany z brakiem zmiennych środowiskowych)*
 
 ### 6.3 Migracje Django i baza danych
 
@@ -189,7 +188,6 @@ Niepoprawnie załadowane zmienne środowiskowe oraz brak widoczności struktury 
 - ręczna weryfikacja bazy danych,
 - instalacja pliku `adminer.php` na serwerze w celu podglądu tabel.
 
-*(zdjęcie – Adminer z widocznymi tabelami Django, w tym auth_user)*
 
 ### 6.4 Uruchomienie aplikacji
 
@@ -200,7 +198,6 @@ Po poprawnym wykonaniu migracji:
 - skonfigurowano Nginx jako reverse proxy,
 - aplikacja została udostępniona użytkownikom.
 
-*(zdjęcie – działająca aplikacja w przeglądarce)*
 
 ## 7. Correctness of Implementation
 
@@ -241,7 +238,6 @@ Projekt FOMO wykorzystuje następujące usługi chmurowe OVH:
 - integracja z Django przez bibliotekę `boto3`,
 - w bazie danych zapisywane są wyłącznie metadane plików.
 
-*(zdjęcie – panel OVH Cloud / Object Storage)*
 
 ## 9. Kanban – Dokumentacja procesu wytwarzania
 
@@ -259,9 +255,7 @@ Projekt był podzielony na trzy kolumny:
 - limit: maksymalnie 5 zadań jednocześnie.
 
 **Done**
-- zadania ukończone.
-
-*(zdjęcie – GitHub Projects / tablica Kanban)*
+- zadania ukończone: foto-projekt.tech
 
 ### 9.2 Korzyści z zastosowania Kanban
 

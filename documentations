@@ -2,288 +2,237 @@
 
 ## 1. Informacje ogólne
 
-**Nazwa projektu:** FOMO
+**Nazwa projektu:** FOMO  
 
-**Typ aplikacji:** Webowa aplikacja typu Todo / Task Manager
+**Typ aplikacji:** Webowa aplikacja typu Todo / Task Manager  
 
-**Technologia backend:** Python + Django 5.x
+**Architektura:** klient–serwer  
 
-**Baza danych:**
+**Technologia backend:**  
+- Python 3.12.x  
+- Django 5.2.8  
 
-* SQLite (development)
-* MySQL (produkcja – OVH Managed Database)
+**Baza danych:**  
+- SQLite (development)  
+- MySQL (produkcja – OVH Managed Database)  
 
-**Przechowywanie plików:** OVH Object Storage (S3-compatible)
+**Przechowywanie plików:** OVH Object Storage (S3-compatible)  
 
-**Autoryzacja:** Django Auth (sesje oparte o cookies)
+**Autoryzacja:** Django Auth (sesje oparte o cookies)  
 
----
+**Środowisko serwerowe:**  
+- Maszyna wirtualna (VM)  
+- Ubuntu Server 22.04 LTS  
 
-## 2. Cel projektu
+## 2. Historia infrastruktury i decyzje technologiczne (Alibaba Cloud → OVH)
 
-Celem projektu jest **stworzenie webowej aplikacji typu Todo**, umożliwiającej użytkownikom zarządzanie codziennymi zadaniami w jednym miejscu.
+### 2.1 Alibaba Cloud – początkowe wdrożenie
 
-Aplikacja została:
+Na początku realizacji projekt FOMO został uruchomiony w chmurze **Alibaba Cloud**. Platforma ta umożliwiła szybki start projektu dzięki dostępności maszyn wirtualnych oraz Object Storage.
 
-* zaprojektowana w architekturze klient–serwer,
-* uruchomiona na **maszynie wirtualnej z systemem Linux**,
-* oparta o framework **Django**,
-* przygotowana do działania w środowisku produkcyjnym.
+W trakcie rozwoju pojawiły się jednak istotne problemy:
 
-Projekt ma na celu połączenie wiedzy z zakresu:
+- nieprzewidywalne i zbyt wysokie naliczanie kosztów,
+- brak przejrzystości billingowej,
+- wymaganie przesłania dokumentów tożsamości (dowód osobisty),
+- brak gwarancji przechowywania danych na terenie Unii Europejskiej.
 
-* programowania backendowego,
-* baz danych,
-* autoryzacji użytkowników,
-* pracy z chmurą (OVH Object Storage),
-* wdrażania aplikacji na serwerze Linux.
+Z powyższych powodów podjęto decyzję o migracji infrastruktury.
 
-Funkcjonalnie aplikacja umożliwia:
+### 2.2 OVH Cloud – środowisko docelowe
 
-* tworzenie kont użytkowników,
-* logowanie i obsługę sesji,
-* dodawanie, edycję i grupowanie zadań,
-* oznaczanie zadań jako wykonane,
-* dodawanie załączników do zadań,
-* bezpieczne przechowywanie plików w chmurze.
+Docelową platformą chmurową projektu FOMO został **OVH Cloud**.
 
----
+Powody wyboru OVH:
 
-## 3. Architektura projektu
+- europejskie centra danych (zgodność z RODO),
+- wysoki poziom bezpieczeństwa danych,
+- dobra integracja z Python i Django,
+- 1000 zł kredytów startowych,
+- dostęp do maszyn wirtualnych, zarządzanej bazy MySQL oraz Object Storage (S3-compatible).
 
-### 3.1 Struktura katalogów
+Cała aplikacja, baza danych oraz pliki zostały przeniesione do OVH.
 
-```
+### 2.3 Problemy napotkane po migracji
+
+**Brak panelu do przeglądania bazy danych**
+
+OVH Managed MySQL nie oferuje wbudowanego panelu typu phpMyAdmin.  
+Rozwiązaniem było ręczne dodanie na serwer pliku `adminer.php`, który umożliwił:
+
+- podgląd struktury bazy danych,
+- przeglądanie tabel i rekordów,
+- weryfikację migracji Django,
+- debugowanie relacji pomiędzy modelami.
+
+**Problem z wysyłaniem maili SMTP**
+
+Lokalnie wysyłanie maili działało poprawnie przy użyciu SMTP OVH (port 587, STARTTLS).  
+Na serwerze produkcyjnym połączenia SMTP były blokowane po stronie OVH i wymagałyby kontaktu z pomocą techniczną.
+
+Decyzja projektowa: funkcjonalność wysyłania maili została wyłączona w wersji produkcyjnej aplikacji.
+
+## 3. Cel projektu
+
+Celem projektu jest stworzenie **webowej aplikacji typu Todo**, umożliwiającej użytkownikom zarządzanie codziennymi zadaniami w jednym miejscu.
+
+Aplikacja:
+
+- działa w architekturze klient–serwer,
+- uruchomiona jest na maszynie wirtualnej z systemem Linux,
+- oparta jest o framework Django,
+- przygotowana do działania w środowisku produkcyjnym.
+
+Projekt łączy zagadnienia:
+
+- programowania backendowego,
+- baz danych,
+- autoryzacji użytkowników,
+- pracy z chmurą (OVH Object Storage),
+- wdrażania aplikacji na serwerze Linux.
+
+## 4. Wersje i zależności
+
+### 4.1 Technologie
+
+- Python 3.12.x  
+- Django 5.2.8  
+- PHP 8.x (Adminer)  
+
+### 4.2 requirements.txt
+Django==5.2.8
+oss2==2.18.6
+python-dotenv==1.0.1
+pymysql==1.1.1
+python-dateutil==2.9.0.post0
+boto3==1.34.162
+
+## 5. Architektura projektu
+
+### 5.1 Struktura katalogów
+
 fomo/
 ├── fomo/
-│   ├── settings.py
-│   ├── urls.py
-│   └── wsgi.py
-│
+│ ├── settings.py
+│ ├── urls.py
+│ └── wsgi.py
 ├── todo/
-│   ├── models.py
-│   ├── views.py
-│   ├── forms.py
-│   ├── urls.py
-│   ├── oss.py
-│   └── templates/
-│       ├── todo/
-│       │   ├── task_edit.html
-│       │   └── task_edit_form.html
-│       └── registration/
-│           ├── login.html
-│           └── register.html
-│
+│ ├── models.py
+│ ├── views.py
+│ ├── forms.py
+│ ├── urls.py
+│ ├── oss.py
+│ └── templates/
+│ ├── todo/
+│ └── registration/
 ├── static/
-│   └── todo/
-│       └── styles.css
+│ └── todo/
+│ └── styles.css
 └── db.sqlite3
-```
 
----
+## 6. Backend – Django
 
-## 4. Backend – Django
+### 6.1 Konfiguracja (`settings.py`)
 
-### 4.1 Settings (`fomo/settings.py`)
+Plik odpowiada za:
 
-Plik odpowiada za konfigurację projektu:
+- konfigurację aplikacji (`INSTALLED_APPS`),
+- middleware,
+- konfigurację bazy danych,
+- obsługę plików statycznych,
+- konfigurację sesji i logowania,
+- dane dostępowe do OVH Object Storage (zmienne środowiskowe).
 
-* zainstalowane aplikacje (`INSTALLED_APPS`),
-* middleware,
-* konfigurację bazy danych,
-* obsługę plików statycznych,
-* konfigurację logowania i sesji,
-* dane dostępowe do OVH OSS (przez zmienne środowiskowe).
+### 6.2 Middleware
 
-### 4.2 Middleware
+- SessionMiddleware  
+- AuthenticationMiddleware  
+- CsrfViewMiddleware  
+- SecurityMiddleware  
 
-Middleware to warstwa pośrednia pomiędzy requestem a widokiem.
+## 7. Modele danych
 
-W projekcie używane są m.in.:
+**TaskGroup**
 
-* `SessionMiddleware` – obsługa sesji (cookies),
-* `AuthenticationMiddleware` – przypisanie użytkownika do `request.user`,
-* `CsrfViewMiddleware` – ochrona formularzy,
-* `SecurityMiddleware` – nagłówki bezpieczeństwa.
+- name
+- color
+- order
+- slug
 
----
+**Task**
 
-## 5. Modele danych (`todo/models.py`)
+- user (FK do User)
+- title
+- description
+- group
+- priority
+- is_completed
+- due_date
+- pola powtarzalności
 
-### 5.1 TaskGroup
+**Attachment**
 
-Reprezentuje grupę/kategorię zadań.
+- task (FK)
+- filename
+- object_key
+- file_url
+- created_at
 
-Najważniejsze pola:
+Pliki nie są przechowywane w bazie danych – zapisywane są wyłącznie ich metadane.
 
-* `name` – nazwa grupy,
-* `color` – kolor UI,
-* `order` – kolejność wyświetlania,
-* `slug` – unikalny identyfikator w URL.
+## 8. Formularze
 
-### 5.2 Task
+**TaskForm**
 
-Reprezentuje pojedyncze zadanie użytkownika.
+- title
+- description
+- group
+- repeat_frequency
+- attachment (opcjonalny)
 
-Najważniejsze pola:
+**TaskGroupForm**
 
-* `user` – właściciel zadania (FK do User),
-* `title`, `description`,
-* `group` – powiązanie z TaskGroup,
-* `priority`, `is_completed`,
-* `due_date`,
-* pola do obsługi powtarzalności.
+Formularz do zarządzania grupami zadań.
 
-Każde zadanie jest przypisane do konkretnego użytkownika.
+## 9. Widoki
 
-### 5.3 Attachment
+- rejestracja użytkownika,
+- logowanie i wylogowanie (Django Auth),
+- lista zadań filtrowana po `request.user`,
+- dodawanie i edycja zadań,
+- upload plików do OVH Object Storage.
 
-Reprezentuje załącznik do zadania.
+## 10. OVH Object Storage (OSS)
 
-Pola:
+- obsługa w pliku `todo/oss.py`,
+- struktura obiektów:
+uploads/user_<id>/task_<id>/filename
 
-* `task` – FK do Task,
-* `filename` – nazwa pliku,
-* `object_key` – ścieżka w OSS,
-* `file_url` – publiczny URL do pliku,
-* `created_at` – data dodania.
+- integracja przez boto3,
+- w bazie danych przechowywane są wyłącznie metadane plików.
 
-Pliki nie są przechowywane w bazie danych – tylko ich metadane.
+## 11. Frontend – Templates
 
----
+- logowanie i rejestracja (Django Auth),
+- edycja zadań w widokach pełnych i modalnych,
+- formularze zabezpieczone tokenem CSRF.
 
-## 6. Formularze (`todo/forms.py`)
+## 12. Bezpieczeństwo
 
-### 6.1 TaskForm
+- sesje oparte o cookies,
+- ochrona CSRF,
+- filtrowanie danych po zalogowanym użytkowniku,
+- brak przechowywania plików w bazie danych,
+- sekrety w zmiennych środowiskowych.
 
-Formularz do dodawania i edycji zadań.
+## 13. Podsumowanie
 
-Pola:
+Projekt FOMO to kompletna aplikacja Todo:
 
-* title
-* description
-* group
-* repeat_frequency
-* attachment (opcjonalny upload pliku)
+- oparta o Django 5.x,
+- wdrożona na Ubuntu Server 22.04,
+- zintegrowana z OVH Cloud,
+- wykorzystująca Object Storage do przechowywania plików,
+- przygotowana do dalszej rozbudowy (API, aplikacje mobilne, powiadomienia).
 
-### 6.2 TaskGroupForm
 
-Formularz do tworzenia grup zadań.
-
----
-
-## 7. Widoki – backend (`todo/views.py`)
-
-### 7.1 Rejestracja
-
-Widok `register`:
-
-* tworzy użytkownika (UserCreationForm),
-* automatycznie loguje użytkownika,
-* inicjalizuje sesję cookie.
-
-### 7.2 Logowanie / Wylogowanie
-
-Wykorzystano wbudowane widoki Django:
-
-* `LoginView`
-* `LogoutView`
-
-Sesja jest oparta o cookie `sessionid`.
-
-### 7.3 Lista zadań
-
-Widok `task_list`:
-
-* wyświetla tylko zadania zalogowanego użytkownika,
-* filtruje dane po `request.user`.
-
-### 7.4 Dodawanie zadania
-
-Widok `add_task`:
-
-1. Walidacja formularza.
-2. Zapis Task do bazy danych.
-3. Upload pliku do OVH OSS (jeśli istnieje).
-4. Zapis rekordu Attachment w bazie.
-
-### 7.5 Edycja zadania
-
-Widok `edit_task`:
-
-* pozwala edytować tylko zadania należące do zalogowanego użytkownika,
-* umożliwia dodanie nowych załączników,
-* wykorzystuje istniejące szablony modalne.
-
----
-
-## 8. OVH Object Storage (OSS)
-
-### 8.1 Lokalizacja kodu
-
-Obsługa OSS znajduje się w pliku:
-
-```
-todo/oss.py
-```
-
-### 8.2 Jak działa upload pliku
-
-1. Backend otrzymuje plik z formularza.
-2. Tworzony jest `object_key`:
-
-   * `uploads/user_<id>/task_<id>/filename`
-3. Plik jest wysyłany do OVH OSS przez boto3.
-4. Generowany jest publiczny URL.
-5. URL oraz metadane są zapisywane w tabeli `attachments`.
-
-### 8.3 Dlaczego OSS
-
-* brak obciążenia bazy danych,
-* skalowalność,
-* szybki dostęp do plików,
-* separacja danych i plików.
-
----
-
-## 9. Frontend – Templates
-
-### 9.1 Logowanie i rejestracja
-
-Pliki:
-
-* `templates/registration/login.html`
-* `templates/registration/register.html`
-
-Obsługiwane przez Django Auth.
-
-### 9.2 Edycja zadania
-
-Pliki:
-
-* `task_edit.html` – pełna strona,
-* `task_edit_form.html` – modal.
-
-Formularze wykorzystują CSRF token.
-
----
-
-## 10. Bezpieczeństwo
-
-* Sesje oparte o cookies.
-* Ochrona CSRF.
-* Brak przechowywania plików w bazie.
-* Filtrowanie danych po `request.user`.
-* Sekrety przechowywane w zmiennych środowiskowych.
-
----
-
-## 11. Podsumowanie
-
-Projekt FOMO to kompletna aplikacja Todo oparta o Django, która:
-
-* stosuje dobre praktyki backendowe,
-* rozdziela odpowiedzialności (views, models, OSS),
-* wykorzystuje sesje i middleware,
-* integruje się z zewnętrzną chmurą plików (OVH OSS),
-* jest gotowa do dalszej rozbudowy (API, mobile, powiadomienia).

@@ -1,0 +1,382 @@
+# Dokumentacja projektu FOMO – aplikacja Todo (Django)
+
+## 1. Informacje ogólne
+
+**Nazwa projektu:** FOMO  
+
+**Typ aplikacji:** Webowa aplikacja typu Todo / Task Manager  
+
+**Architektura:** klient–serwer  
+
+**Technologia backend:**  
+- Python 3.12.x  
+- Django 5.2.8  
+
+**Baza danych:**  
+- SQLite (development)  
+- MySQL (produkcja – OVH Managed Database)  
+
+**Przechowywanie plików:** OVH Object Storage (S3-compatible)  
+
+**Autoryzacja:** Django Auth (sesje oparte o cookies)  
+
+**Środowisko serwerowe:**  
+- Maszyna wirtualna (VM)  
+- Ubuntu Server 22.04 LTS  
+
+## 2. Historia infrastruktury i decyzje technologiczne (Alibaba Cloud → OVH)
+
+### 2.1 Alibaba Cloud – początkowe wdrożenie
+
+Na początku realizacji projekt FOMO został uruchomiony w chmurze **Alibaba Cloud**. Platforma ta umożliwiła szybki start projektu dzięki dostępności maszyn wirtualnych oraz Object Storage.
+
+W trakcie rozwoju pojawiły się jednak istotne problemy:
+
+- nieprzewidywalne i zbyt wysokie naliczanie kosztów,
+- brak przejrzystości billingowej,
+- wymaganie przesłania dokumentów tożsamości (dowód osobisty),
+- brak gwarancji przechowywania danych na terenie Unii Europejskiej.
+
+Z powyższych powodów podjęto decyzję o migracji infrastruktury.
+
+### 2.2 OVH Cloud – środowisko docelowe
+
+Docelową platformą chmurową projektu FOMO został **OVH Cloud**.
+
+Powody wyboru OVH:
+
+- europejskie centra danych (zgodność z RODO),
+- wysoki poziom bezpieczeństwa danych,
+- dobra integracja z Python i Django,
+- 1000 zł kredytów startowych,
+- dostęp do maszyn wirtualnych, zarządzanej bazy MySQL oraz Object Storage (S3-compatible).
+
+Cała aplikacja, baza danych oraz pliki zostały przeniesione do OVH.
+
+### 2.3 Problemy napotkane po migracji
+
+**Brak panelu do przeglądania bazy danych**
+
+OVH Managed MySQL nie oferuje wbudowanego panelu typu phpMyAdmin.  
+Rozwiązaniem było ręczne dodanie na serwer pliku `adminer.php`, który umożliwił:
+
+- podgląd struktury bazy danych,
+- przeglądanie tabel i rekordów,
+- weryfikację migracji Django,
+- debugowanie relacji pomiędzy modelami.
+
+**Problem z wysyłaniem maili SMTP**
+
+Lokalnie wysyłanie maili działało poprawnie przy użyciu SMTP OVH (port 587, STARTTLS).  
+Na serwerze produkcyjnym połączenia SMTP były blokowane po stronie OVH i wymagałyby kontaktu z pomocą techniczną.
+
+Decyzja projektowa: funkcjonalność wysyłania maili została wyłączona w wersji produkcyjnej aplikacji.
+
+## 3. Cel projektu
+
+Celem projektu jest stworzenie **webowej aplikacji typu Todo**, umożliwiającej użytkownikom zarządzanie codziennymi zadaniami w jednym miejscu.
+
+Aplikacja:
+
+- działa w architekturze klient–serwer,
+- uruchomiona jest na maszynie wirtualnej z systemem Linux,
+- oparta jest o framework Django,
+- przygotowana do działania w środowisku produkcyjnym.
+
+Projekt łączy zagadnienia:
+
+- programowania backendowego,
+- baz danych,
+- autoryzacji użytkowników,
+- pracy z chmurą (OVH Object Storage),
+- wdrażania aplikacji na serwerze Linux.
+
+## 4. Wersje i zależności
+
+### 4.1 Technologie
+
+- Python 3.12.x  
+- Django 5.2.8  
+- PHP 8.x (Adminer)  
+
+### 4.2 requirements.txt
+Django==5.2.8
+oss2==2.18.6
+python-dotenv==1.0.1
+pymysql==1.1.1
+python-dateutil==2.9.0.post0
+boto3==1.34.162
+
+## 5. Architektura projektu
+
+### 5.1 Struktura katalogów
+
+fomo/
+├── fomo/
+│ ├── settings.py
+│ ├── urls.py
+│ └── wsgi.py
+├── todo/
+│ ├── models.py
+│ ├── views.py
+│ ├── forms.py
+│ ├── urls.py
+│ ├── oss.py
+│ └── templates/
+│ ├── todo/
+│ └── registration/
+├── static/
+│ └── todo/
+│ └── styles.css
+└── db.sqlite3
+
+## 6. Proces wdrożenia (Deployment Process)
+
+### 6.1 Przygotowanie serwera
+
+Aplikacja FOMO została wdrożona na maszynie wirtualnej OVH z systemem:
+
+- Ubuntu Server 22.04 LTS  
+- Python 3.12  
+- virtualenv  
+- Gunicorn + Nginx  
+
+Proces deploymentu obejmował:
+
+1. utworzenie i konfigurację maszyny wirtualnej,
+2. instalację zależności systemowych,
+3. utworzenie środowiska wirtualnego Python,
+4. sklonowanie repozytorium projektu na serwer.
+
+
+
+### 6.2 Zmienne środowiskowe (.env)
+
+Projekt wykorzystuje plik `.env` do przechowywania danych wrażliwych, takich jak:
+
+- `SECRET_KEY`,
+- dane dostępowe do bazy MySQL,
+- dane dostępowe do OVH Object Storage,
+- ustawienia środowiska (`DEBUG=False`).
+
+**Problem:**  
+Podczas pierwszego wdrożenia plik `.env` nie był widoczny dla aplikacji uruchamianej przez Gunicorn.
+
+Skutki:
+- Django nie widziało konfiguracji bazy danych,
+- migracje kończyły się błędami,
+- aplikacja nie uruchamiała się poprawnie.
+
+**Rozwiązanie:**  
+Poprawna konfiguracja zmiennych środowiskowych po stronie serwera oraz ich jawne ładowanie w kontekście aplikacji.
+
+
+### 6.3 Migracje Django i baza danych
+
+Podczas pierwszego deploymentu migracje Django nie działały poprawnie.
+
+Problemy obejmowały:
+- brak tabel w bazie danych,
+- brak tabeli `auth_user`,
+- błędy przy logowaniu i rejestracji użytkowników.
+
+**Główna przyczyna:**  
+Niepoprawnie załadowane zmienne środowiskowe oraz brak widoczności struktury bazy danych w OVH Managed MySQL.
+
+**Rozwiązania:**
+- ponowne wykonanie migracji Django (`makemigrations`, `migrate`),
+- ręczna weryfikacja bazy danych,
+- instalacja pliku `adminer.php` na serwerze w celu podglądu tabel.
+
+
+### 6.4 Uruchomienie aplikacji
+
+Po poprawnym wykonaniu migracji:
+
+- utworzono konto superużytkownika Django,
+- uruchomiono Gunicorn jako usługę systemową,
+- skonfigurowano Nginx jako reverse proxy,
+- aplikacja została udostępniona użytkownikom.
+
+
+## 7. Correctness of Implementation
+
+### 7.1 Mailing
+
+- W środowisku lokalnym wysyłanie maili przez SMTP OVH działało poprawnie.
+- W środowisku produkcyjnym połączenia SMTP były blokowane po stronie OVH.
+- Wymagałoby to kontaktu z pomocą techniczną OVH.
+
+**Decyzja projektowa:**  
+Funkcjonalność wysyłania maili została wyłączona w wersji produkcyjnej aplikacji, ponieważ nie była kluczowa dla działania systemu Todo.
+
+### 7.2 Migracje i użytkownicy
+
+- Problemy z migracjami nie wynikały z błędów w modelach Django.
+- Głównym problemem była konfiguracja środowiska serwerowego.
+- Po poprawnym załadowaniu `.env` oraz migracji, tabela `auth_user` została utworzona poprawnie.
+- Rejestracja i logowanie użytkowników działają zgodnie z Django Auth.
+
+## 8. Use of Cloud Services
+
+Projekt FOMO wykorzystuje następujące usługi chmurowe OVH:
+
+### 8.1 OVH Compute (VM)
+
+- maszyna wirtualna jako serwer aplikacji Django,
+- pełna kontrola nad środowiskiem Linux.
+
+### 8.2 OVH Managed MySQL
+
+- zarządzana baza danych MySQL,
+- oddzielenie warstwy aplikacji od warstwy danych,
+- zwiększone bezpieczeństwo i stabilność.
+
+### 8.3 OVH Object Storage (S3-compatible)
+
+- przechowywanie plików użytkowników,
+- integracja z Django przez bibliotekę `boto3`,
+- w bazie danych zapisywane są wyłącznie metadane plików.
+
+
+## 9. Kanban – Dokumentacja procesu wytwarzania
+
+Podczas realizacji projektu zastosowano metodykę **Kanban**, wykorzystując **GitHub Projects**.
+
+### 9.1 Struktura tablicy Kanban
+
+Projekt był podzielony na trzy kolumny:
+
+**Todo**
+- zadania zaplanowane do realizacji.
+
+**In Progress**
+- zadania aktualnie realizowane,
+- limit: maksymalnie 5 zadań jednocześnie.
+
+**Done**
+- zadania ukończone: foto-projekt.tech
+
+### 9.2 Korzyści z zastosowania Kanban
+
+- lepsza kontrola postępu prac,
+- ograniczenie pracy w toku (WIP),
+- czytelny podział zadań,
+- łatwe śledzenie historii projektu.
+
+## 10. Podsumowanie końcowe
+
+Projekt FOMO to kompletna aplikacja Todo:
+
+- oparta o Django 5.x,
+- wdrożona na Ubuntu Server 22.04,
+- wykorzystująca OVH Cloud (VM, MySQL, Object Storage),
+- rozwijana zgodnie z metodyką Kanban,
+- przygotowana do dalszej rozbudowy (API, aplikacje mobilne, powiadomienia).
+
+## 11. Backend – Django
+
+### 11.1 Konfiguracja (`settings.py`)
+
+Plik odpowiada za:
+
+- konfigurację aplikacji (`INSTALLED_APPS`),
+- middleware,
+- konfigurację bazy danych,
+- obsługę plików statycznych,
+- konfigurację sesji i logowania,
+- dane dostępowe do OVH Object Storage (zmienne środowiskowe).
+
+### 11.2 Middleware
+
+- SessionMiddleware  
+- AuthenticationMiddleware  
+- CsrfViewMiddleware  
+- SecurityMiddleware  
+
+## 12. Modele danych
+
+**TaskGroup**
+
+- name
+- color
+- order
+- slug
+
+**Task**
+
+- user (FK do User)
+- title
+- description
+- group
+- priority
+- is_completed
+- due_date
+- pola powtarzalności
+
+**Attachment**
+
+- task (FK)
+- filename
+- object_key
+- file_url
+- created_at
+
+Pliki nie są przechowywane w bazie danych – zapisywane są wyłącznie ich metadane.
+
+## 13. Formularze
+
+**TaskForm**
+
+- title
+- description
+- group
+- repeat_frequency
+- attachment (opcjonalny)
+
+**TaskGroupForm**
+
+Formularz do zarządzania grupami zadań.
+
+## 14. Widoki
+
+- rejestracja użytkownika,
+- logowanie i wylogowanie (Django Auth),
+- lista zadań filtrowana po `request.user`,
+- dodawanie i edycja zadań,
+- upload plików do OVH Object Storage.
+
+## 15. OVH Object Storage (OSS)
+
+- obsługa w pliku `todo/oss.py`,
+- struktura obiektów:
+uploads/user_<id>/task_<id>/filename
+
+- integracja przez boto3,
+- w bazie danych przechowywane są wyłącznie metadane plików.
+
+## 16. Frontend – Templates
+
+- logowanie i rejestracja (Django Auth),
+- edycja zadań w widokach pełnych i modalnych,
+- formularze zabezpieczone tokenem CSRF.
+
+## 17. Bezpieczeństwo
+
+- sesje oparte o cookies,
+- ochrona CSRF,
+- filtrowanie danych po zalogowanym użytkowniku,
+- brak przechowywania plików w bazie danych,
+- sekrety w zmiennych środowiskowych.
+
+## 18. Podsumowanie
+
+Projekt FOMO to kompletna aplikacja Todo:
+
+- oparta o Django 5.x,
+- wdrożona na Ubuntu Server 22.04,
+- zintegrowana z OVH Cloud,
+- wykorzystująca Object Storage do przechowywania plików,
+- przygotowana do dalszej rozbudowy (API, aplikacje mobilne, powiadomienia).
+
+

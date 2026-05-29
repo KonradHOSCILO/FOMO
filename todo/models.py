@@ -31,6 +31,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.BigAutoField(primary_key=True)
 
     mail = models.EmailField(unique=True, db_column="mail")
+    password = models.CharField(max_length=128)
     created_at = models.DateTimeField(default=timezone.now)
 
     is_active = models.BooleanField(default=True)

@@ -72,7 +72,7 @@ if OVH_MYSQL_HOST and OVH_MYSQL_USER and OVH_MYSQL_PASSWORD and OVH_MYSQL_DB:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
-    }
+    
 else:
     DATABASES = {
         "default": {

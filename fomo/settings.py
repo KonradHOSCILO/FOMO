@@ -68,14 +68,10 @@ OVH_MYSQL_DB = os.getenv("OVH_MYSQL_DB")
 if OVH_MYSQL_HOST and OVH_MYSQL_USER and OVH_MYSQL_PASSWORD and OVH_MYSQL_DB:
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.mysql",
-            "NAME": OVH_MYSQL_DB,
-            "USER": OVH_MYSQL_USER,
-            "PASSWORD": OVH_MYSQL_PASSWORD,
-            "HOST": OVH_MYSQL_HOST,
-            "PORT": OVH_MYSQL_PORT,
-            "OPTIONS": {"charset": "utf8mb4"},
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
         }
+    }
     }
 else:
     DATABASES = {

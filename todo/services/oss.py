@@ -4,8 +4,8 @@ import re
 import boto3
 from botocore.client import Config
 
-S3_ENDPOINT = os.environ["S3_ENDPOINT"]
-S3_BUCKET = os.environ["S3_BUCKET"]
+S3_ENDPOINT = os.getenv("S3_ENDPOINT", "")
+S3_BUCKET = os.getenv("S3_BUCKET", "")
 
 def safe_object_key(*, user_id: int, task_id: int, filename: str) -> str:
     name = filename or "file"
@@ -15,18 +15,19 @@ def safe_object_key(*, user_id: int, task_id: int, filename: str) -> str:
     return f"uploads/user_{user_id}/task_{task_id}/{token}_{name}"
 
 def _client():
+    if not S3_ENDPOINT or not S3_BUCKET:
+        raise RuntimeError("S3 is not configured in local mode")
+
     return boto3.client(
         "s3",
         endpoint_url=S3_ENDPOINT,
-        aws_access_key_id=os.environ["S3_ACCESS_KEY"],
-        aws_secret_access_key=os.environ["S3_SECRET_KEY"],
+        aws_access_key_id=os.getenv("S3_ACCESS_KEY", ""),
+        aws_secret_access_key=os.getenv("S3_SECRET_KEY", ""),
         config=Config(signature_version="s3v4"),
     )
 
 def make_bucket_public_read() -> None:
-    """
-    Jednorazowo – ustawia bucket ACL na public-read.
-    """
+
     s3 = _client()
     s3.put_bucket_acl(Bucket=S3_BUCKET, ACL="public-read")
 

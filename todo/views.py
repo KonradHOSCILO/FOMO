@@ -57,17 +57,23 @@ def logout_view(request):
 
 
 @login_required
+@login_required
 def task_list(request):
     selected_group = request.GET.get("group") or None
     if selected_group not in GROUPS:
         selected_group = None
 
-    tasks = list_tasks_with_attachments(user_id=request.user.id, group=selected_group)
+    tasks = []
     form = TaskCreateForm()
     return render(
         request,
         "todo/task_list.html",
-        {"tasks": tasks, "form": form, "groups": GROUPS, "selected_group": selected_group},
+        {
+            "tasks": tasks,
+            "form": form,
+            "groups": GROUPS,
+            "selected_group": selected_group,
+        },
     )
 
 @require_POST
